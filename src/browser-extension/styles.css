@@ -1,0 +1,183 @@
+/**
+ * DevAssist Browser Extension Styles
+ * Using Proactiva Design System
+ */
+
+:root {
+  /* Proactiva Brand Colors */
+  --proactiva-primary: #0066cc;
+  --proactiva-primary-dark: #004499;
+  --proactiva-secondary: #e74c3c;
+  --proactiva-secondary-dark: #c0392b;
+  
+  /* Status Colors */
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-error: #e74c3c;
+  
+  /* Text Colors */
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-inverse: #ffffff;
+  
+  /* Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-overlay: rgba(0, 0, 0, 0.75);
+  
+  /* Shadows */
+  --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
+  
+  /* Transitions */
+  --transition-normal: 0.3s ease;
+}
+
+/* Floating Indicator */
+#devassist-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, var(--proactiva-primary) 0%, var(--proactiva-primary-dark) 100%);
+  color: var(--text-inverse);
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: var(--transition-normal);
+  cursor: pointer;
+  user-select: none;
+}
+
+#devassist-indicator:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 102, 204, 0.3);
+}
+
+/* Badge Styling */
+.devassist-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.devassist-badge .pro {
+  color: var(--text-inverse);
+}
+
+.devassist-badge .va {
+  color: #ffcccc;
+  text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+/* Status Dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-warning);
+  animation: pulse 2s infinite;
+  margin-left: auto;
+}
+
+.status-dot.connected {
+  background: var(--color-success);
+  animation: none;
+}
+
+.status-dot.disconnected {
+  background: var(--color-error);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Stats Display */
+.devassist-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  opacity: 0.8;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Flash Animation */
+.flash {
+  animation: flash 0.5s ease;
+}
+
+@keyframes flash {
+  0%, 100% {
+    background: linear-gradient(135deg, var(--proactiva-primary) 0%, var(--proactiva-primary-dark) 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, var(--proactiva-secondary) 0%, var(--proactiva-secondary-dark) 100%);
+  }
+}
+
+/* Minimized State */
+#devassist-indicator.minimized {
+  padding: 8px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#devassist-indicator.minimized .devassist-stats {
+  display: none;
+}
+
+#devassist-indicator.minimized .devassist-badge {
+  margin: 0;
+  font-size: 10px;
+}
+
+/* Decision Highlight */
+.devassist-highlight {
+  background: linear-gradient(90deg, 
+    rgba(0, 102, 204, 0.1) 0%, 
+    rgba(231, 76, 60, 0.1) 100%);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border-left: 3px solid var(--proactiva-primary);
+  margin: 4px 0;
+  position: relative;
+}
+
+.devassist-highlight::before {
+  content: '📌 Decision captured';
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 11px;
+  color: var(--proactiva-primary);
+  background: var(--bg-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

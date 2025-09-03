@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevAssist MCP Control Panel</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // API Configuration
+        const API_BASE = 'http://localhost:3456/api';
+        const WS_URL = 'ws://localhost:3457';
+
+        // API Client
+        const api = {
+            get: async (endpoint) => {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return response.json();
+            },
+            post: async (endpoint, data) => {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return response.json();
+            }
+        };
+
+        // Components
+        const ProjectSelector = ({ currentProject, onProjectChange }) => {
+            const [projects, setProjects] = useState([]);
+            const [isCreating, setIsCreating] = useState(false);
+            const [newProjectName, setNewProjectName] = useState('');
+
+            useEffect(() => {
+                loadProjects();
+            }, []);
+
+            const loadProjects = async () => {
+                const data = await api.get('/projects');
+                if (data.success) {
+                    setProjects(data.projects);
+                }
+            };
+
+            const createProject = async () => {
+                if (newProjectName.trim()) {
+                    // Just switch to the new project - it will be created on first use
+                    onProjectChange(newProjectName.trim());
+                    setNewProjectName('');
+                    setIsCreating(false);
+                    // Reload projects after a delay to show the new one
+                    setTimeout(loadProjects, 1000);
+                }
+            };
+
+            return (
+                <div className="glass-effect rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-3">Current Project</h3>
+                    {isCreating ? (
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newProjectName}
+                                onChange={(e) => setNewProjectName(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && createProject()}
+                                placeholder="Project name"
+                                className="flex-1 bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400"
+                                autoFocus
+                            />
+                            <button
+                                onClick={createProject}
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded transition-colors"
+                            >
+                                ✓
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsCreating(false);
+                                    setNewProjectName('');
+                                }}
+                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
+                            >
+                                ✗
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <select
+                                value={currentProject}
+                                onChange={(e) => onProjectChange(e.target.value)}
+                                className="flex-1 bg-white/10 rounded px-3 py-2 text-white"
+                            >
+                                {projects.map(project => (
+                                    <option key={project.id} value={project.name}>
+                                        {project.displayName || project.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={() => setIsCreating(true)}
+                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded transition-colors"
+                            >
+                                + New
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const DecisionsPanel = ({ project }) => {
+            const [decisions, setDecisions] = useState([]);
+            const [isAdding, setIsAdding] = useState(false);
+            const [newDecision, setNewDecision] = useState({
+                decision: '',
+                context: '',
+                impact: 'medium',
+                alternatives: []
+            });
+
+            useEffect(() => {
+                loadDecisions();
+            }, [project]);
+
+            const loadDecisions = async () => {
+                const data = await api.get(`/projects/${project}/decisions`);
+                if (data.success) {
+                    setDecisions(data.decisions);
+                }
+            };
+
+            const addDecision = async () => {
+                const result = await api.post('/decisions', {
+                    ...newDecision,
+                    project
+                });
+                if (result.success) {
+                    loadDecisions();
+                    setIsAdding(false);
+                    setNewDecision({
+                        decision: '',
+                        context: '',
+                        impact: 'medium',
+                        alternatives: []
+                    });
+                }
+            };
+
+            return (
+                <div className="glass-effect rounded-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">📝 Architectural Decisions</h2>
+                        <button
+                            onClick={() => setIsAdding(!isAdding)}
+                            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded transition-colors"
+                        >
+                            {isAdding ? 'Cancel' : '+ Add Decision'}
+                        </button>
+                    </div>
+
+                    {isAdding && (
+                        <div className="mb-4 p-4 bg-black/30 rounded-lg space-y-3">
+                            <input
+                                type="text"
+                                placeholder="Decision title"
+                                value={newDecision.decision}
+                                onChange={(e) => setNewDecision({...newDecision, decision: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400"
+                            />
+                            <textarea
+                                placeholder="Context and rationale"
+                                value={newDecision.context}
+                                onChange={(e) => setNewDecision({...newDecision, context: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400 h-24"
+                            />
+                            <select
+                                value={newDecision.impact}
+                                onChange={(e) => setNewDecision({...newDecision, impact: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white"
+                            >
+                                <option value="low">Low Impact</option>
+                                <option value="medium">Medium Impact</option>
+                                <option value="high">High Impact</option>
+                                <option value="critical">Critical Impact</option>
+                            </select>
+                            <button
+                                onClick={addDecision}
+                                className="w-full bg-green-600 hover:bg-green-700 py-2 rounded transition-colors"
+                            >
+                                Save Decision
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {decisions.length === 0 ? (
+                            <p className="text-gray-400 text-center py-8">No decisions recorded yet</p>
+                        ) : (
+                            decisions.map((decision) => (
+                                <div key={decision.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-lg">{decision.decision}</h3>
+                                            {decision.context && (
+                                                <p className="text-gray-300 mt-1 text-sm">{decision.context}</p>
+                                            )}
+                                            <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                                                <span className={`px-2 py-1 rounded ${
+                                                    decision.impact === 'critical' ? 'bg-red-600/30' :
+                                                    decision.impact === 'high' ? 'bg-orange-600/30' :
+                                                    decision.impact === 'medium' ? 'bg-yellow-600/30' :
+                                                    'bg-green-600/30'
+                                                }`}>
+                                                    {decision.impact} impact
+                                                </span>
+                                                <span>{new Date(decision.timestamp).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const ProgressPanel = ({ project }) => {
+            const [progress, setProgress] = useState([]);
+            const [isAdding, setIsAdding] = useState(false);
+            const [newProgress, setNewProgress] = useState({
+                milestone: '',
+                status: 'in_progress',
+                notes: '',
+                blockers: []
+            });
+
+            useEffect(() => {
+                loadProgress();
+            }, [project]);
+
+            const loadProgress = async () => {
+                const data = await api.get(`/projects/${project}/progress`);
+                if (data.success) {
+                    setProgress(data.progress);
+                }
+            };
+
+            const addProgress = async () => {
+                const result = await api.post('/progress', {
+                    ...newProgress,
+                    project
+                });
+                if (result.success) {
+                    loadProgress();
+                    setIsAdding(false);
+                    setNewProgress({
+                        milestone: '',
+                        status: 'in_progress',
+                        notes: '',
+                        blockers: []
+                    });
+                }
+            };
+
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'completed': return 'bg-green-600';
+                    case 'in_progress': return 'bg-blue-600';
+                    case 'blocked': return 'bg-red-600';
+                    case 'planned': return 'bg-gray-600';
+                    default: return 'bg-gray-600';
+                }
+            };
+
+            return (
+                <div className="glass-effect rounded-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">📊 Progress Tracking</h2>
+                        <button
+                            onClick={() => setIsAdding(!isAdding)}
+                            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded transition-colors"
+                        >
+                            {isAdding ? 'Cancel' : '+ Update Progress'}
+                        </button>
+                    </div>
+
+                    {isAdding && (
+                        <div className="mb-4 p-4 bg-black/30 rounded-lg space-y-3">
+                            <input
+                                type="text"
+                                placeholder="Milestone name"
+                                value={newProgress.milestone}
+                                onChange={(e) => setNewProgress({...newProgress, milestone: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400"
+                            />
+                            <select
+                                value={newProgress.status}
+                                onChange={(e) => setNewProgress({...newProgress, status: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white"
+                            >
+                                <option value="planned">Planned</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="blocked">Blocked</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <textarea
+                                placeholder="Notes"
+                                value={newProgress.notes}
+                                onChange={(e) => setNewProgress({...newProgress, notes: e.target.value})}
+                                className="w-full bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400 h-20"
+                            />
+                            <button
+                                onClick={addProgress}
+                                className="w-full bg-green-600 hover:bg-green-700 py-2 rounded transition-colors"
+                            >
+                                Save Progress
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {progress.length === 0 ? (
+                            <p className="text-gray-400 text-center py-8">No progress tracked yet</p>
+                        ) : (
+                            progress.map((item) => (
+                                <div key={item.id} className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-lg">{item.milestone}</h3>
+                                            {item.notes && (
+                                                <p className="text-gray-300 mt-1 text-sm">{item.notes}</p>
+                                            )}
+                                            <div className="flex gap-4 mt-2">
+                                                <span className={`text-xs px-2 py-1 rounded ${getStatusColor(item.status)}`}>
+                                                    {item.status.replace('_', ' ')}
+                                                </span>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(item.updated_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            {item.blockers && item.blockers.length > 0 && (
+                                                <div className="mt-2 text-sm text-red-400">
+                                                    ⚠️ Blockers: {item.blockers.join(', ')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const SemanticSearchPanel = ({ project }) => {
+            const [query, setQuery] = useState('');
+            const [results, setResults] = useState([]);
+            const [isSearching, setIsSearching] = useState(false);
+
+            const search = async () => {
+                if (!query.trim()) return;
+                
+                setIsSearching(true);
+                const data = await api.post('/search', {
+                    query,
+                    options: {
+                        project,
+                        limit: 10
+                    }
+                });
+                
+                if (data.success) {
+                    setResults(data.results);
+                }
+                setIsSearching(false);
+            };
+
+            return (
+                <div className="glass-effect rounded-lg p-6">
+                    <h2 className="text-xl font-bold mb-4">🔍 Semantic Search</h2>
+                    
+                    <div className="flex gap-2 mb-4">
+                        <input
+                            type="text"
+                            placeholder="Search project knowledge..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && search()}
+                            className="flex-1 bg-white/10 rounded px-3 py-2 text-white placeholder-gray-400"
+                        />
+                        <button
+                            onClick={search}
+                            disabled={isSearching}
+                            className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded transition-colors disabled:opacity-50"
+                        >
+                            {isSearching ? '...' : 'Search'}
+                        </button>
+                    </div>
+
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {results.length === 0 ? (
+                            <p className="text-gray-400 text-center py-4">
+                                {query ? 'No results found' : 'Enter a query to search'}
+                            </p>
+                        ) : (
+                            results.map((result, index) => (
+                                <div key={index} className="bg-white/5 rounded-lg p-3">
+                                    <div className="flex justify-between items-start">
+                                        <p className="text-sm">{result.text || result.content || 'No content'}</p>
+                                        <span className="text-xs text-purple-400 ml-2">
+                                            {result._distance ? `${(1 - result._distance).toFixed(2)}` : '1.00'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const DashboardMetrics = ({ project }) => {
+            const [metrics, setMetrics] = useState({
+                decisions: 0,
+                progress: 0,
+                patterns: 0
+            });
+
+            useEffect(() => {
+                loadMetrics();
+            }, [project]);
+
+            const loadMetrics = async () => {
+                const [decisionsData, progressData] = await Promise.all([
+                    api.get(`/projects/${project}/decisions?limit=100`),
+                    api.get(`/projects/${project}/progress?limit=100`)
+                ]);
+
+                setMetrics({
+                    decisions: decisionsData.success ? decisionsData.decisions.length : 0,
+                    progress: progressData.success ? progressData.progress.filter(p => p.status === 'completed').length : 0,
+                    patterns: 0 // Would need patterns endpoint
+                });
+            };
+
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-400 text-sm">Decisions</p>
+                                <p className="text-2xl font-bold">{metrics.decisions}</p>
+                            </div>
+                            <span className="text-3xl">📝</span>
+                        </div>
+                    </div>
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-400 text-sm">Completed</p>
+                                <p className="text-2xl font-bold">{metrics.progress}</p>
+                            </div>
+                            <span className="text-3xl">✅</span>
+                        </div>
+                    </div>
+                    <div className="glass-effect rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-gray-400 text-sm">Patterns</p>
+                                <p className="text-2xl font-bold">{metrics.patterns}</p>
+                            </div>
+                            <span className="text-3xl">🔄</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [currentProject, setCurrentProject] = useState('default');
+            const [wsStatus, setWsStatus] = useState('disconnected');
+            const wsRef = useRef(null);
+
+            useEffect(() => {
+                // Setup WebSocket connection
+                const connectWs = () => {
+                    wsRef.current = new WebSocket(WS_URL);
+                    
+                    wsRef.current.onopen = () => {
+                        setWsStatus('connected');
+                        console.log('WebSocket connected');
+                    };
+                    
+                    wsRef.current.onclose = () => {
+                        setWsStatus('disconnected');
+                        console.log('WebSocket disconnected');
+                        // Reconnect after 3 seconds
+                        setTimeout(connectWs, 3000);
+                    };
+                    
+                    wsRef.current.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        console.log('WebSocket message:', data);
+                        // Could trigger refreshes based on message type
+                    };
+                };
+                
+                connectWs();
+                
+                return () => {
+                    if (wsRef.current) {
+                        wsRef.current.close();
+                    }
+                };
+            }, []);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+                    {/* Header */}
+                    <header className="gradient-bg p-6 shadow-xl">
+                        <div className="container mx-auto">
+                            <div className="flex justify-between items-center">
+                                <h1 className="text-3xl font-bold flex items-center">
+                                    <span className="mr-3">🧠</span>
+                                    DevAssist MCP Control Panel
+                                </h1>
+                                <div className="flex items-center gap-4">
+                                    <span className={`flex items-center gap-2 text-sm ${
+                                        wsStatus === 'connected' ? 'text-green-400' : 'text-red-400'
+                                    }`}>
+                                        <span className={`w-2 h-2 rounded-full ${
+                                            wsStatus === 'connected' ? 'bg-green-400' : 'bg-red-400'
+                                        } ${wsStatus === 'connected' ? '' : 'pulse'}`}></span>
+                                        {wsStatus === 'connected' ? 'Connected' : 'Connecting...'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="container mx-auto p-6">
+                        {/* Project Selector */}
+                        <div className="mb-6">
+                            <ProjectSelector
+                                currentProject={currentProject}
+                                onProjectChange={setCurrentProject}
+                            />
+                        </div>
+
+                        {/* Dashboard Metrics */}
+                        <DashboardMetrics project={currentProject} />
+
+                        {/* Main Panels */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <DecisionsPanel project={currentProject} />
+                            <ProgressPanel project={currentProject} />
+                            <SemanticSearchPanel project={currentProject} />
+                            
+                            {/* Duplicate Detection Panel */}
+                            <div className="glass-effect rounded-lg p-6">
+                                <h2 className="text-xl font-bold mb-4">♊ Duplicate Detection</h2>
+                                <div className="text-center py-8 text-gray-400">
+                                    <p>Code pattern analysis</p>
+                                    <p className="text-sm mt-2">Use the MCP tool to analyze code patterns</p>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="text-center p-6 text-gray-400 text-sm">
+                        DevAssist MCP © 2024 | Powered by SQLite + LanceDB + Transformers
+                    </footer>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

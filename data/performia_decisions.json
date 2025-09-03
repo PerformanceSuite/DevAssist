@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1756277851314,
+    "timestamp": "2025-08-27T06:57:31.314Z",
+    "decision": "Use simple MCP server without complex SDK",
+    "context": "The complex SDK was causing compatibility issues, so we built a simple working server from scratch",
+    "alternatives": [
+      "Fix SDK compatibility",
+      "Use different MCP framework"
+    ],
+    "impact": "Faster development and immediate functionality"
+  },
+  {
+    "id": 1756278404009,
+    "timestamp": "2025-08-27T07:06:44.009Z",
+    "decision": "Adopt one unified MCP server",
+    "context": "Centralize project intelligence and musical tools to avoid duplication",
+    "alternatives": [
+      "Split into two servers"
+    ],
+    "impact": "Shared context and simpler ops"
+  }
+]

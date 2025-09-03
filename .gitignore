@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Data files
+data/vectors/
+data/*.db
+*.db
+
+# Test files
+*.test.js
+test_*.js
+debug_*.js
+inspect_*.js
+diagnose_*.js
+demo_*.js
+
+# Backup files
+*.backup
+*_backup.js
+*.bak
+*.old
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+
+# Log files
+*.log
+
+# Build files
+dist/
+build/
+
+# Claude Desktop
+.claude/
+
+# Temporary files
+*.tmp
+temp/
