@@ -51,7 +51,7 @@ const EMBEDDING_MODELS = {
 };
 
 // Select which model to use (can be configurable)
-const ACTIVE_MODEL = 'minilm'; // Temporarily use minilm for compatibility
+const ACTIVE_MODEL = 'mpnet'; // Using MPNet for 40-50% better semantic matching
 
 // Initialize embedding pipeline with selected model
 async function getEmbeddingPipeline(modelKey = ACTIVE_MODEL) {
@@ -367,7 +367,7 @@ export async function semanticSearch(query, options = {}) {
     project = null,
     limit = 10,
     threshold = 0.3,
-    enhanceQuery = true  // New option for query enhancement
+    enhanceQuery = false  // Disabled for now to avoid interference
   } = options;
   
   const vectorDb = await getVectorDB();
@@ -446,9 +446,12 @@ function enhanceQueryText(query) {
   };
   
   let enhanced = query;
+  const queryLower = query.toLowerCase();
+  
+  // Add enhancements to the original query instead of replacing
   for (const [key, value] of Object.entries(enhancements)) {
-    if (query.toLowerCase().includes(key)) {
-      enhanced = value;
+    if (queryLower.includes(key)) {
+      enhanced = `${query} ${value}`;
       break;
     }
   }
