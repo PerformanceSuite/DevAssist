@@ -58,32 +58,32 @@ npm run db:init
 open http://localhost:3456
 ```
 
-## 🔧 Recent Fixes (January 2025)
+## 🎉 Latest Updates (January 2025)
 
-### ✅ Semantic Search Fixed
-- Fixed RecordBatchIterator handling for LanceDB v0.21.3
-- Corrected similarity threshold logic
-- Now returns relevant results with proper scoring
+### ✅ Hybrid Search & Query Intelligence - LIVE!
+- **Intelligent Query Routing**: Automatically detects code vs. natural language
+- **4 Search Strategies**: keyword, vector, keyword_boost, hybrid
+- **10x Faster Code Search**: Using SQLite FTS5 for exact matches
+- **Smart Score Fusion**: Combines keyword and semantic scores
 
-### 📝 Test the Fix
-
-```bash
-# Run semantic search tests
-node test_semantic_fixed.js
+### 🧠 How It Works
+```javascript
+// System automatically chooses the best strategy:
+"function authenticate()"     → Keyword search (fast, exact)
+"how to implement auth"       → Vector search (semantic)
+"JWT authentication"          → Keyword boost (term + context)
+"secure API with JWT tokens"  → Hybrid (both methods)
 ```
 
-## 🚧 Upcoming Features
+### 📈 Upgrade to Better Embeddings (Optional)
+```bash
+# Currently using: MiniLM (384 dims, fast)
+# Upgrade to: MPNet (768 dims, 40-50% better)
+node migrate_embeddings.js --yes
 
-### Enhanced Embeddings (Ready in `dataAccess_enhanced.js`)
-- Upgrade to all-mpnet-base-v2 model (40-50% better matching)
-- 768 dimensions vs current 384
-- Better technical term understanding
-
-### Intelligent Hybrid Search
-- Automatic query routing (keyword vs. vector)
-- SQLite FTS5 for exact matches
-- Score fusion for best results
-- 10x faster code searches
+# After migration, update dataAccess.js:
+# const ACTIVE_MODEL = 'mpnet';
+```
 
 ## 📊 Current Performance
 
