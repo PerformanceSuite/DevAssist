@@ -3,12 +3,12 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Import ENHANCED database functions with project isolation
-import { initDatabases } from './src/database/init-enhanced.js';
+// Import new database functions
+import { initDatabases } from './src/database/init.js';
 import {
   recordDecision,
   trackProgress,
@@ -19,18 +19,7 @@ import {
   generateEmbedding
 } from './src/database/dataAccess.js';
 
-// Import ENHANCED documentation with self-awareness
-import { 
-  searchDocumentation,
-  getSelfDocumentation,
-  listDocumentation,
-  formatDocumentationResults
-} from './src/documentation/enhanced.js';
-
-// Import SESSION management for continuity
-import { getSessionManager } from './src/session/persistence.js';
-
-// Import original documentation resources (keeping for compatibility)
+// Import documentation resources
 import { 
   getDocumentationResources, 
   readDocumentationResource,
@@ -41,43 +30,19 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Global instances
+// Initialize databases on startup
 let dbInitialized = false;
-let databases = null;
-let sessionManager = null;
-let projectIsolation = null;
-
-// Enhanced initialization with project isolation
 async function ensureDbInitialized() {
   if (!dbInitialized) {
-    console.log('🚀 Initializing DevAssist with enhanced features...');
-    
-    // Initialize with project isolation
-    databases = await initDatabases();
-    
-    // Set up session manager
-    sessionManager = getSessionManager(
-      databases.projectName,
-      databases.paths,
-      databases.sqlite
-    );
-    
-    // Store isolation validator
-    projectIsolation = databases.isolation;
-    
+    await initDatabases();
     dbInitialized = true;
-    
-    console.log(`✅ DevAssist ready for project: ${databases.projectName}`);
-    console.log(`📁 Data path: ${databases.dataPath}`);
   }
-  
-  return { databases, sessionManager, projectIsolation };
 }
 
 // Create server instance
 const server = new Server({
   name: 'devassist-mcp',
-  version: '2.2.0', // Updated version with all enhancements
+  version: '2.1.0', // Updated version with database and resource support
 }, {
   capabilities: {
     tools: {},
@@ -85,7 +50,7 @@ const server = new Server({
   },
 });
 
-// Define development assistance tools with enhanced features
+// Define development assistance tools
 const tools = [
   {
     name: 'analyze_codebase',
@@ -342,116 +307,100 @@ const tools = [
       },
     },
   },
-  {
-    name: 'start_session',
-    description: 'Start a new development session with context loading',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: {
-          type: 'string',
-          description: 'Session description',
-          default: 'Development session',
-        },
-      },
-    },
-  },
-  {
-    name: 'end_session',
-    description: 'End current session with knowledge preservation',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-  },
-  {
-    name: 'session_checkpoint',
-    description: 'Save a checkpoint in the current session',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        summary: {
-          type: 'string',
-          description: 'Checkpoint summary',
-        },
-      },
-      required: ['summary'],
-    },
-  },
 ];
 
-// Handle list tools request
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools };
-});
+// Handle tools/list requests
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: tools,
+}));
 
-// Handle list resources request
+// Handle resources/list requests
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  const resources = getDocumentationResources();
-  return { resources };
-});
-
-// Handle read resource request
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
-  
   try {
-    const resource = readDocumentationResource(uri);
-    return resource;
+    const resources = getDocumentationResources();
+    return { resources };
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error reading resource: ${error.message}`,
-        },
-      ],
-    };
+    console.error('Error listing resources:', error);
+    return { resources: [] };
   }
 });
 
-// Handle tool execution
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  await ensureDbInitialized();
-  
-  const { name, arguments: args } = request.params;
-  
+// Handle resources/read requests
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   try {
-    // Apply project isolation to all queries
-    const isolatedArgs = projectIsolation ? projectIsolation.validateQuery(args || {}) : args;
-    
+    const { uri } = request.params;
+    const resource = readDocumentationResource(uri);
+    return {
+      contents: [
+        {
+          uri: resource.uri,
+          mimeType: resource.mimeType,
+          text: resource.text
+        }
+      ]
+    };
+  } catch (error) {
+    console.error('Error reading resource:', error);
+    throw new Error(`Failed to read resource: ${error.message}`);
+  }
+});
+
+// Handle tools/call requests
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  // Ensure databases are initialized
+  await ensureDbInitialized();
+
+  try {
     switch (name) {
       case 'analyze_codebase': {
-        const { path: codePath = '.', depth = 3, pattern = '*', index_patterns = false } = isolatedArgs || {};
+        const { path: analyzePath = '.', depth = 3, pattern = '*', index_patterns = false } = args || {};
         
         try {
-          const fullPath = path.isAbsolute(codePath) ? codePath : path.resolve(codePath);
-          const { execSync } = await import('child_process');
+          // Get absolute path
+          const fullPath = path.isAbsolute(analyzePath) ? analyzePath : path.resolve(analyzePath);
           
-          // Get basic file count and structure
-          const fileList = execSync(
-            `find "${fullPath}" -maxdepth ${depth} -name "${pattern}" -type f 2>/dev/null | head -100`,
-            { encoding: 'utf8', shell: '/bin/bash' }
-          ).trim().split('\n').filter(Boolean);
-          
-          // Get language statistics if possible
-          let languageStats = '';
-          try {
-            languageStats = execSync(
-              `find "${fullPath}" -maxdepth ${depth} -type f -name "*.*" | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head -10`,
-              { encoding: 'utf8', shell: '/bin/bash' }
-            ).trim();
-          } catch (e) {
-            // Ignore if command fails
+          // Build find command based on pattern
+          let findCmd = `find "${fullPath}" -maxdepth ${depth} -type f`;
+          if (pattern !== '*') {
+            findCmd += ` -name "${pattern}"`;
           }
           
-          // Index patterns if requested
-          if (index_patterns && fileList.length > 0) {
-            for (const file of fileList.slice(0, 20)) { // Limit to first 20 files
+          // Execute analysis
+          const files = execSync(`${findCmd} 2>/dev/null | head -100`, {
+            encoding: 'utf8',
+          }).trim().split('\n').filter(line => line);
+          
+          // Count by file type
+          const fileTypes = {};
+          files.forEach(file => {
+            const ext = path.extname(file) || 'no-extension';
+            fileTypes[ext] = (fileTypes[ext] || 0) + 1;
+          });
+          
+          // Get total line count for code files
+          const codeFiles = files.filter(f => /\.(py|js|ts|jsx|tsx|java|cpp|c|h|go|rs|scd)$/.test(f));
+          let totalLines = 0;
+          if (codeFiles.length > 0) {
+            try {
+              totalLines = parseInt(execSync(`cat ${codeFiles.join(' ')} 2>/dev/null | wc -l`, {
+                encoding: 'utf8',
+              }).trim()) || 0;
+            } catch (e) {
+              // Ignore errors in line counting
+            }
+          }
+          
+          // Index code patterns if requested
+          let indexedCount = 0;
+          if (index_patterns && codeFiles.length > 0) {
+            for (const file of codeFiles.slice(0, 20)) { // Limit to first 20 files
               try {
-                const content = readFileSync(file, 'utf8').substring(0, 1000); // First 1000 chars
-                const language = path.extname(file).substring(1);
-                await addCodePattern(file, content, language, databases.projectName);
+                const content = execSync(`head -100 "${file}" 2>/dev/null`, { encoding: 'utf8' });
+                const language = path.extname(file).slice(1) || 'unknown';
+                await addCodePattern(file, content, language);
+                indexedCount++;
               } catch (e) {
                 // Skip files that can't be read
               }
@@ -464,16 +413,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 type: 'text',
                 text: `Codebase Analysis for ${fullPath}:
                 
-Files found: ${fileList.length}
-Code files: ${fileList.filter(f => /\.(js|ts|py|java|cpp|c|rs|go)$/.test(f)).length}
-Total lines of code: ${execSync(`find "${fullPath}" -name "${pattern}" -type f -exec wc -l {} + 2>/dev/null | tail -1 | awk '{print $1}'`, { encoding: 'utf8' }).trim() || '0'}
+Files found: ${files.length}
+Code files: ${codeFiles.length}
+Total lines of code: ${totalLines}
+${index_patterns ? `Code patterns indexed: ${indexedCount}` : ''}
 
-${languageStats ? `\nFile types breakdown:\n${languageStats}` : ''}
+File types breakdown:
+${Object.entries(fileTypes)
+  .sort((a, b) => b[1] - a[1])
+  .map(([ext, count]) => `  ${ext}: ${count} files`)
+  .join('\n')}
 
 Sample files:
-${fileList.slice(0, 10).map(f => `  - ${f.replace(fullPath, '.')}`).join('\n')}
-
-${index_patterns ? '\n✓ Code patterns indexed for duplicate detection' : ''}`,
+${files.slice(0, 10).map(f => `  - ${f}`).join('\n')}`,
               },
             ],
           };
@@ -490,39 +442,32 @@ ${index_patterns ? '\n✓ Code patterns indexed for duplicate detection' : ''}`,
       }
 
       case 'record_architectural_decision': {
-        const { decision, context, alternatives, impact } = isolatedArgs || {};
+        const { decision, context, alternatives, impact, project = 'default' } = args || {};
         
         try {
-          const result = await recordDecision(
+          const result = await recordDecision({
             decision,
             context,
             alternatives,
             impact,
-            databases.projectName
-          );
-          
-          // Add to session if active
-          if (sessionManager) {
-            sessionManager.addDecision({
-              decision,
-              context,
-              impact,
-              alternatives
-            });
-          }
+            project
+          });
           
           return {
             content: [
               {
                 type: 'text',
-                text: `✓ Architectural decision recorded successfully!
+                text: `✅ Architectural decision recorded successfully:
 
-**Decision:** ${decision}
-**Context:** ${context}
-**Impact:** ${impact || 'Not specified'}
-**Alternatives considered:** ${alternatives ? alternatives.join(', ') : 'None specified'}
+**Decision**: ${decision}
+**Context**: ${context}
+**Impact**: ${impact || 'Not specified'}
+**Alternatives**: ${alternatives?.length ? alternatives.join(', ') : 'None specified'}
+**Project**: ${project}
+**ID**: ${result.id}
+**Embedding ID**: ${result.embedding_id}
 
-This decision has been stored in the project knowledge base and will be available for future reference.`,
+This decision has been indexed for semantic search and will be maintained in project memory.`,
               },
             ],
           };
@@ -539,46 +484,48 @@ This decision has been stored in the project knowledge base and will be availabl
       }
 
       case 'get_project_memory': {
-        const { query, category = 'all', limit = 10 } = isolatedArgs || {};
+        const { query, category = 'all', limit = 10, project = 'default' } = args || {};
         
         try {
-          // Force current project
-          const project = databases.projectName;
           const memories = await getProjectMemory(query, category, limit, project);
           
-          if (!memories || memories.length === 0) {
+          if (memories.length === 0) {
             return {
               content: [
                 {
                   type: 'text',
-                  text: `No project memory found for category: ${category}
+                  text: `No project memory found${query ? ` for query: "${query}"` : ''}${category !== 'all' ? ` in category: ${category}` : ''}.
 
-Try recording some decisions or progress updates first, or adjust your search query.`,
+Use record_architectural_decision and track_progress to build project memory.`,
                 },
               ],
             };
           }
           
-          const formattedMemories = memories.map((m, i) => {
-            if (m.decision) {
-              return `📋 **Decision**: ${m.decision}
+          // Format output
+          const formattedMemories = memories.map(m => {
+            if (m.type === 'decision') {
+              const similarity = m.similarity ? ` (similarity: ${(m.similarity * 100).toFixed(1)}%)` : '';
+              return `📋 **Decision**: ${m.decision}${similarity}
    Context: ${m.context}
-   Impact: ${m.impact || 'Not specified'}
+   Impact: ${m.impact}
    Date: ${new Date(m.timestamp).toLocaleDateString()}`;
-            } else if (m.milestone) {
-              return `📈 **Progress**: ${m.milestone}
+            } else if (m.type === 'progress') {
+              return `📊 **Milestone**: ${m.milestone}
    Status: ${m.status}
    Notes: ${m.notes || 'None'}
-   Updated: ${new Date(m.updated_at || m.created_at).toLocaleDateString()}`;
+   Date: ${new Date(m.updated_at || m.created_at).toLocaleDateString()}`;
             }
-            return `📝 **Memory**: ${JSON.stringify(m).substring(0, 200)}...`;
-          }).join('\n\n');
+            return '';
+          }).filter(text => text).join('\n\n');
           
           return {
             content: [
               {
                 type: 'text',
-                text: `🧠 Project Memory (${memories.length} results):\n\n${formattedMemories}`,
+                text: `🧠 Project Memory (${memories.length} results)${query ? ` for "${query}"` : ''}:
+
+${formattedMemories}`,
               },
             ],
           };
@@ -595,40 +542,31 @@ Try recording some decisions or progress updates first, or adjust your search qu
       }
 
       case 'track_progress': {
-        const { milestone, status, notes, blockers } = isolatedArgs || {};
+        const { milestone, status, notes, blockers, project = 'default' } = args || {};
         
         try {
-          const result = await trackProgress(
+          const id = await trackProgress({
             milestone,
             status,
             notes,
             blockers,
-            databases.projectName
-          );
-          
-          // Add to session if active
-          if (sessionManager) {
-            sessionManager.addKnowledge({
-              type: 'progress',
-              milestone,
-              status,
-              notes,
-              blockers
-            });
-          }
+            project
+          });
           
           return {
             content: [
               {
                 type: 'text',
-                text: `✓ Progress tracked successfully!
+                text: `✅ Progress tracked successfully:
 
-**Milestone:** ${milestone}
-**Status:** ${status}
-**Notes:** ${notes || 'None'}
-**Blockers:** ${blockers && blockers.length > 0 ? blockers.join(', ') : 'None'}
+**Milestone**: ${milestone}
+**Status**: ${status}
+**Notes**: ${notes || 'None'}
+**Blockers**: ${blockers?.length ? blockers.join(', ') : 'None'}
+**Project**: ${project}
+**ID**: ${id}
 
-Progress has been recorded in the project knowledge base.`,
+Progress has been recorded and will be tracked in project history.`,
               },
             ],
           };
@@ -645,24 +583,19 @@ Progress has been recorded in the project knowledge base.`,
       }
 
       case 'identify_duplicate_effort': {
-        const { feature, path: searchPath = '.', similarity_threshold = 0.7 } = isolatedArgs || {};
+        const { feature, path: searchPath = '.', similarity_threshold = 0.7 } = args || {};
         
         try {
-          const result = await identifyDuplicates(
-            feature,
-            searchPath,
-            similarity_threshold,
-            databases.projectName
-          );
+          const result = await identifyDuplicates(feature, searchPath, similarity_threshold);
           
-          if (!result.duplicates || result.duplicates.length === 0) {
+          if (result.duplicates.length === 0) {
             return {
               content: [
                 {
                   type: 'text',
-                  text: `✓ No duplicate effort detected for "${feature}"
+                  text: `✅ ${result.message}
 
-This appears to be new functionality. Proceed with implementation!`,
+The feature "${feature}" appears to be unique in the codebase.`,
                 },
               ],
             };
@@ -704,10 +637,9 @@ Consider reviewing these existing implementations before creating new functional
       }
 
       case 'semantic_search': {
-        const { query, search_type = 'all', min_similarity = 0.5, limit = 10 } = isolatedArgs || {};
+        const { query, search_type = 'all', min_similarity = 0.5, limit = 10, project } = args || {};
         
         try {
-          const project = databases.projectName;
           const results = [];
           
           if (search_type === 'all' || search_type === 'decisions') {
@@ -783,58 +715,34 @@ ${formattedResults}`,
       }
 
       case 'get_documentation': {
-        const { topic, source = 'all', search_depth = 3 } = isolatedArgs || {};
+        const { topic, source = 'all', search_depth = 3 } = args || {};
         
-        try {
-          // Use enhanced documentation search
-          const results = await searchDocumentation(topic, { 
-            source, 
-            limit: search_depth 
-          });
-          
-          // If no results and asking about DevAssist, return self-documentation
-          if (results.length === 0 && topic.toLowerCase().includes('devassist')) {
-            const selfDoc = await getSelfDocumentation();
-            return {
-              content: [{
-                type: 'text',
-                text: selfDoc.content
-              }]
-            };
-          }
-          
-          // Format and return results
-          const formatted = formatDocumentationResults(results);
-          
-          return {
-            content: [{
+        // For now, return placeholder as before
+        // In future, this could use semantic search on indexed documentation
+        return {
+          content: [
+            {
               type: 'text',
-              text: formatted
-            }]
-          };
-        } catch (error) {
-          // Fallback to basic response
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `📚 Documentation search for "${topic}":
+              text: `📚 Documentation search for "${topic}":
 
-Error searching documentation: ${error.message}
+This feature will be enhanced to use semantic search on indexed documentation.
 
-Try these alternative searches:
-- "DevAssist tools" - List of available tools
-- "DevAssist configuration" - Setup guide
-- "DevAssist sessions" - Session management
-- Use listDocumentation() to see available docs`,
-              },
-            ],
-          };
-        }
+Current sources available:
+- SuperCollider documentation
+- Claude Code documentation  
+- Project-specific documentation
+
+For now, please refer to:
+- SuperCollider: https://doc.sccode.org/
+- Claude Code: https://claude.ai/docs
+- Project docs: Check README.md and docs/ folder`,
+            },
+          ],
+        };
       }
 
       case 'analyze_dependencies': {
-        const { path: projectPath = '.', include_dev = true, check_updates = false } = isolatedArgs || {};
+        const { path: projectPath = '.', include_dev = true, check_updates = false } = args || {};
         
         try {
           const fullPath = path.isAbsolute(projectPath) ? projectPath : path.resolve(projectPath);
@@ -842,7 +750,7 @@ Try these alternative searches:
           // Check for package.json
           const packageJsonPath = path.join(fullPath, 'package.json');
           if (existsSync(packageJsonPath)) {
-            const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+            const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
             const deps = packageJson.dependencies || {};
             const devDeps = include_dev ? (packageJson.devDependencies || {}) : {};
             
@@ -885,11 +793,9 @@ Total: ${Object.keys(deps).length + Object.keys(devDeps).length} dependencies`,
       }
 
       case 'generate_summary': {
-        const { days_back = 7, include_commits = true } = isolatedArgs || {};
+        const { days_back = 7, include_commits = true, project = 'default' } = args || {};
         
         try {
-          const project = databases.projectName;
-          
           // Get recent decisions
           const recentDecisions = await getProjectMemory(null, 'decisions', 20, project);
           const recentProgress = await getProjectMemory(null, 'progress', 20, project);
@@ -927,11 +833,6 @@ ${gitLog.split('\n').slice(0, 5).map(c => `  ${c}`).join('\n')}`;
             }
           }
           
-          // Get session status
-          const sessionStatus = sessionManager ? sessionManager.getStatus() : null;
-          const sessionInfo = sessionStatus && sessionStatus.active ? 
-            `\n🔄 Active Session: ${sessionStatus.session}\n   Knowledge items: ${sessionStatus.knowledge}` : '';
-          
           return {
             content: [
               {
@@ -946,7 +847,6 @@ ${filteredDecisions.slice(0, 3).map(d => `  - ${d.decision}`).join('\n')}
 📈 Progress Updates: ${filteredProgress.length}
 ${filteredProgress.slice(0, 3).map(p => `  - ${p.milestone}: ${p.status}`).join('\n')}
 ${commitSummary}
-${sessionInfo}
 
 Use get_project_memory for detailed information on any item.`,
               },
@@ -960,104 +860,6 @@ Use get_project_memory for detailed information on any item.`,
                 text: `Error generating summary: ${error.message}`,
               },
             ],
-          };
-        }
-      }
-
-      case 'start_session': {
-        const { description = 'Development session' } = isolatedArgs || {};
-        
-        try {
-          const result = await sessionManager.startSession({ description });
-          
-          let contextInfo = '';
-          if (result.previousContext) {
-            contextInfo = `\n📚 Previous Context Loaded:
-  - Session: ${result.previousContext.session.id}
-  - Knowledge items: ${result.previousContext.knowledge?.length || 0}
-  - Summary: ${result.previousContext.summary || 'No summary'}`;
-          }
-          
-          return {
-            content: [{
-              type: 'text',
-              text: `🚀 Session Started Successfully!
-
-Session ID: ${result.session.id}
-Project: ${result.session.project}
-Started: ${result.session.started_at}
-${contextInfo}
-
-✅ DevAssist is tracking this session
-✅ Knowledge will be preserved
-✅ Terminal logging path: ${result.session.metadata.terminal_log}
-
-Use session_checkpoint to save progress during work.`
-            }]
-          };
-        } catch (error) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Error starting session: ${error.message}`
-            }]
-          };
-        }
-      }
-
-      case 'end_session': {
-        try {
-          const summary = await sessionManager.endSession();
-          
-          return {
-            content: [{
-              type: 'text',
-              text: `🏁 Session Ended Successfully!
-
-${summary}
-
-✅ Knowledge preserved for next session
-✅ Terminal logs saved
-✅ Context ready for continuity
-
-Start a new session anytime with start_session.`
-            }]
-          };
-        } catch (error) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Error ending session: ${error.message}`
-            }]
-          };
-        }
-      }
-
-      case 'session_checkpoint': {
-        const { summary } = isolatedArgs || {};
-        
-        try {
-          const checkpoint = await sessionManager.checkpoint(summary);
-          
-          return {
-            content: [{
-              type: 'text',
-              text: `💾 Checkpoint Saved!
-
-Time: ${checkpoint.timestamp}
-Summary: ${checkpoint.summary}
-Knowledge items: ${checkpoint.knowledge_count}
-Decisions: ${checkpoint.decisions_count}
-
-Continue working - session is still active.`
-            }]
-          };
-        } catch (error) {
-          return {
-            content: [{
-              type: 'text',
-              text: `Error creating checkpoint: ${error.message}`
-            }]
           };
         }
       }
@@ -1088,11 +890,9 @@ Continue working - session is still active.`
 const transport = new StdioServerTransport();
 server.connect(transport);
 
-console.error('🚀 DevAssist MCP Server v2.2.0 - Enhanced Edition');
-console.error('✅ Features: Project Isolation | Session Management | Self-Documentation');
-console.error(`📁 Project: ${process.env.DEVASSIST_PROJECT || 'default'}`);
-console.error(`📂 Data Path: ${process.env.DEVASSIST_DATA_PATH || '.devassist/data'}`);
-
+console.error('DevAssist MCP Server v2.1 running with SQLite + LanceDB + Documentation Resources...');
 if (hasDocumentation()) {
-  console.error('📚 Documentation available from:', getDocumentationPath());
+  console.error('Documentation resources available from:', getDocumentationPath());
+} else {
+  console.error('No documentation resources found - add docs to .devassist/docs/');
 }
