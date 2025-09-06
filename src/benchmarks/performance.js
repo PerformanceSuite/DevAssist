@@ -55,11 +55,11 @@ class Benchmark {
   }
   
   report() {
-    console.log(`\n📊 Benchmark: ${this.name}`);
-    console.log('━'.repeat(60));
+    // console.log(`\n📊 Benchmark: ${this.name}`);
+    // console.log('━'.repeat(60));
     
     for (const result of this.results) {
-      console.log(`
+      // console.log(`
 Iterations: ${result.iterations}
 Average:    ${result.avg}ms
 Minimum:    ${result.min}ms
@@ -73,17 +73,17 @@ P99:        ${result.p99}ms`);
 
 // Benchmark tests
 async function runBenchmarks() {
-  console.log('🚀 DevAssist Performance Benchmarks');
-  console.log('═'.repeat(60));
+  // console.log('🚀 DevAssist Performance Benchmarks');
+  // console.log('═'.repeat(60));
   
   // Initialize databases
-  console.log('\n⚙️ Initializing databases...');
+  // console.log('\n⚙️ Initializing databases...');
   await initDatabases();
   
   const results = {};
   
   // Test 1: Embedding Generation
-  console.log('\n🧪 Testing embedding generation...');
+  // console.log('\n🧪 Testing embedding generation...');
   const embeddingBench = new Benchmark('Embedding Generation');
   
   const testTexts = [
@@ -104,7 +104,7 @@ async function runBenchmarks() {
   results.embedding = embeddingResult;
   
   // Test 2: Decision Recording
-  console.log('\n🧪 Testing decision recording...');
+  // console.log('\n🧪 Testing decision recording...');
   const decisionBench = new Benchmark('Decision Recording');
   
   let decisionCount = 0;
@@ -123,7 +123,7 @@ async function runBenchmarks() {
   results.decisionRecording = decisionResult;
   
   // Test 3: Progress Tracking
-  console.log('\n🧪 Testing progress tracking...');
+  // console.log('\n🧪 Testing progress tracking...');
   const progressBench = new Benchmark('Progress Tracking');
   
   let progressCount = 0;
@@ -142,7 +142,7 @@ async function runBenchmarks() {
   results.progressTracking = progressResult;
   
   // Test 4: Semantic Search
-  console.log('\n🧪 Testing semantic search...');
+  // console.log('\n🧪 Testing semantic search...');
   const searchBench = new Benchmark('Semantic Search');
   
   const searchQueries = [
@@ -167,7 +167,7 @@ async function runBenchmarks() {
   results.semanticSearch = searchResult;
   
   // Test 5: Project Memory Retrieval
-  console.log('\n🧪 Testing project memory retrieval...');
+  // console.log('\n🧪 Testing project memory retrieval...');
   const memoryBench = new Benchmark('Project Memory');
   
   const memoryResult = await memoryBench.run(async () => {
@@ -178,7 +178,7 @@ async function runBenchmarks() {
   results.projectMemory = memoryResult;
   
   // Test 6: Duplicate Detection
-  console.log('\n🧪 Testing duplicate detection...');
+  // console.log('\n🧪 Testing duplicate detection...');
   const duplicateBench = new Benchmark('Duplicate Detection');
   
   const features = [
@@ -199,7 +199,7 @@ async function runBenchmarks() {
   results.duplicateDetection = duplicateResult;
   
   // Test 7: Code Pattern Indexing
-  console.log('\n🧪 Testing code pattern indexing...');
+  // console.log('\n🧪 Testing code pattern indexing...');
   const patternBench = new Benchmark('Code Pattern Indexing');
   
   const sampleCode = `
@@ -225,8 +225,8 @@ function authenticate(user, password) {
   results.codePatternIndexing = patternResult;
   
   // Compare with JSON baseline
-  console.log('\n📈 Comparison with JSON Baseline');
-  console.log('━'.repeat(60));
+  // console.log('\n📈 Comparison with JSON Baseline');
+  // console.log('━'.repeat(60));
   
   // Simulate JSON operations for comparison
   const jsonBench = new Benchmark('JSON Operations');
@@ -252,7 +252,7 @@ function authenticate(user, password) {
     jsonData.push(newItem);
   }, 100);
   
-  console.log('\nJSON Write (baseline): ', jsonWriteResult.avg, 'ms avg');
+  // console.log('\nJSON Write (baseline): ', jsonWriteResult.avg, 'ms avg');
   
   // JSON search
   const jsonSearchResult = await jsonBench.run(async () => {
@@ -262,28 +262,28 @@ function authenticate(user, password) {
     );
   }, 100);
   
-  console.log('JSON Search (baseline):', jsonSearchResult.avg, 'ms avg');
+  // console.log('JSON Search (baseline):', jsonSearchResult.avg, 'ms avg');
   
   // Summary Report
-  console.log('\n📊 Performance Summary');
-  console.log('═'.repeat(60));
-  console.log('\nOperation                    | Avg (ms) | P95 (ms) | P99 (ms)');
-  console.log('─'.repeat(60));
+  // console.log('\n📊 Performance Summary');
+  // console.log('═'.repeat(60));
+  // console.log('\nOperation                    | Avg (ms) | P95 (ms) | P99 (ms)');
+  // console.log('─'.repeat(60));
   
   for (const [key, value] of Object.entries(results)) {
     const name = key.replace(/([A-Z])/g, ' $1').trim();
-    console.log(
+    // console.log(
       `${name.padEnd(28)} | ${value.avg.padStart(8)} | ${value.p95.padStart(8)} | ${value.p99.padStart(8)}`
     );
   }
   
   // Performance improvements
-  console.log('\n🚀 Performance Improvements vs JSON:');
+  // console.log('\n🚀 Performance Improvements vs JSON:');
   const searchImprovement = ((parseFloat(jsonSearchResult.avg) / parseFloat(results.semanticSearch.avg)) * 100 - 100).toFixed(1);
-  console.log(`  • Semantic Search: ${searchImprovement}% ${searchImprovement > 0 ? 'faster' : 'slower'} than JSON grep`);
-  console.log(`  • Real similarity scoring vs keyword matching`);
-  console.log(`  • Concurrent access with SQLite WAL mode`);
-  console.log(`  • Indexed queries vs linear search`);
+  // console.log(`  • Semantic Search: ${searchImprovement}% ${searchImprovement > 0 ? 'faster' : 'slower'} than JSON grep`);
+  // console.log(`  • Real similarity scoring vs keyword matching`);
+  // console.log(`  • Concurrent access with SQLite WAL mode`);
+  // console.log(`  • Indexed queries vs linear search`);
   
   // Save results to file
   const reportPath = path.join(process.cwd(), 'benchmark-results.json');
@@ -296,11 +296,11 @@ function authenticate(user, password) {
     }
   }, null, 2));
   
-  console.log(`\n💾 Results saved to: ${reportPath}`);
+  // console.log(`\n💾 Results saved to: ${reportPath}`);
   
   // Cleanup
   await closeConnections();
-  console.log('\n✅ Benchmarks complete!');
+  // console.log('\n✅ Benchmarks complete!');
 }
 
 // Run if called directly

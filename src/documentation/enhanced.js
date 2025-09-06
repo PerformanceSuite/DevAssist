@@ -42,7 +42,7 @@ class DocumentationIndex {
   async initialize() {
     if (this.initialized) return;
     
-    console.log('Initializing documentation index...');
+    // console.log('Initializing documentation index...');
     
     // Index all documentation sources
     for (const [source, paths] of Object.entries(DOC_SOURCES)) {
@@ -54,7 +54,7 @@ class DocumentationIndex {
     }
     
     this.initialized = true;
-    console.log(`Documentation index ready: ${this.documents.size} documents`);
+    // console.log(`Documentation index ready: ${this.documents.size} documents`);
   }
 
   async indexPath(docPath, source) {

@@ -57,7 +57,7 @@ const ACTIVE_MODEL = 'mpnet'; // Using MPNet for 40-50% better semantic matching
 async function getEmbeddingPipeline(modelKey = ACTIVE_MODEL) {
   if (!embeddingPipelines[modelKey]) {
     const model = EMBEDDING_MODELS[modelKey];
-    console.log(`Loading embedding model: ${model.name}`);
+    // console.log(`Loading embedding model: ${model.name}`);
     embeddingPipelines[modelKey] = await pipeline(
       'feature-extraction', 
       model.name
@@ -255,7 +255,7 @@ export async function hybridSearch(query, options = {}) {
   // Analyze query to determine strategy
   const queryAnalysis = analyzeQuery(query);
   
-  console.log(`Query Analysis: ${queryAnalysis.type} (${queryAnalysis.strategy}) - Confidence: ${queryAnalysis.confidence}`);
+  // console.log(`Query Analysis: ${queryAnalysis.type} (${queryAnalysis.strategy}) - Confidence: ${queryAnalysis.confidence}`);
   
   // Route based on analysis if autoRoute is enabled
   if (autoRoute) {
@@ -467,7 +467,7 @@ function enhanceQueryText(query) {
  * Migrate existing embeddings to new model
  */
 export async function migrateEmbeddings(fromModel = 'minilm', toModel = 'mpnet') {
-  console.log(`Migrating embeddings from ${fromModel} to ${toModel}...`);
+  // console.log(`Migrating embeddings from ${fromModel} to ${toModel}...`);
   
   const db = getSQLiteDB();
   const vectorDb = await getVectorDB();
@@ -484,10 +484,10 @@ export async function migrateEmbeddings(fromModel = 'minilm', toModel = 'mpnet')
     // Update in vector database
     const table = await vectorDb.openTable('decisions');
     // This would need to update existing record - implementation depends on LanceDB API
-    console.log(`Migrated decision ${decision.id}`);
+    // console.log(`Migrated decision ${decision.id}`);
   }
   
-  console.log('Migration complete!');
+  // console.log('Migration complete!');
 }
 
 // ============================================

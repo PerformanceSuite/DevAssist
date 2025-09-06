@@ -38,13 +38,13 @@ class AIConversationMonitor {
       
       this.ws.onopen = () => {
         this.isConnected = true;
-        console.log('✅ DevAssist connected');
+        // console.log('✅ DevAssist connected');
         this.updateUI('connected');
       };
       
       this.ws.onclose = () => {
         this.isConnected = false;
-        console.log('❌ DevAssist disconnected');
+        // console.log('❌ DevAssist disconnected');
         this.updateUI('disconnected');
         // Retry connection after 5 seconds
         setTimeout(() => this.connectWebSocket(), 5000);

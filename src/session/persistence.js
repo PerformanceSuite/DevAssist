@@ -327,7 +327,7 @@ export class SessionManager {
     // Store bridge in database
     if (this.db) {
       // Could add a session_bridges table if needed
-      console.log('Session bridge created:', bridge);
+      // console.log('Session bridge created:', bridge);
     }
     
     return bridge;

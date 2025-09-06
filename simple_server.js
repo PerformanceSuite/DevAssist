@@ -512,7 +512,7 @@ process.stdin.on('data', (chunk) => {
       try {
         const request = JSON.parse(line);
         const response = server.handleRequest(request);
-        console.log(JSON.stringify(response));
+        // console.log(JSON.stringify(response));
       } catch (error) {
         console.error('Error processing request:', error.message);
         const errorResponse = {
@@ -524,7 +524,7 @@ process.stdin.on('data', (chunk) => {
             data: error.message,
           },
         };
-        console.log(JSON.stringify(errorResponse));
+        // console.log(JSON.stringify(errorResponse));
       }
     }
   }

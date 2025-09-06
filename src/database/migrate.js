@@ -12,17 +12,17 @@ const DATA_DIR = path.join(ROOT_DIR, 'data');
 
 // Migrate JSON data to new databases
 export async function migrateFromJSON() {
-  console.log('🚀 Starting migration from JSON to SQLite + LanceDB...\n');
+  // console.log('🚀 Starting migration from JSON to SQLite + LanceDB...\n');
   
   // Initialize databases
-  console.log('📊 Initializing databases...');
+  // console.log('📊 Initializing databases...');
   await initDatabases();
   
   // Get all JSON files
   const jsonFiles = readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
   
   if (jsonFiles.length === 0) {
-    console.log('ℹ️ No JSON files to migrate');
+    // console.log('ℹ️ No JSON files to migrate');
     return { migrated: 0, errors: [] };
   }
   
@@ -31,7 +31,7 @@ export async function migrateFromJSON() {
   
   for (const file of jsonFiles) {
     const filePath = path.join(DATA_DIR, file);
-    console.log(`\n📄 Processing ${file}...`);
+    // console.log(`\n📄 Processing ${file}...`);
     
     try {
       const data = JSON.parse(readFileSync(filePath, 'utf8'));
@@ -42,7 +42,7 @@ export async function migrateFromJSON() {
       const dataType = parts[1] || 'unknown';
       
       if (dataType === 'decisions' && Array.isArray(data)) {
-        console.log(`  → Migrating ${data.length} decisions for project "${project}"`);
+        // console.log(`  → Migrating ${data.length} decisions for project "${project}"`);
         
         for (const decision of data) {
           try {
@@ -64,11 +64,11 @@ export async function migrateFromJSON() {
             process.stdout.write('x');
           }
         }
-        console.log('\n  ✅ Decisions migrated');
+        // console.log('\n  ✅ Decisions migrated');
       }
       
       else if (dataType === 'progress' && Array.isArray(data)) {
-        console.log(`  → Migrating ${data.length} progress items for project "${project}"`);
+        // console.log(`  → Migrating ${data.length} progress items for project "${project}"`);
         
         for (const progress of data) {
           try {
@@ -90,11 +90,11 @@ export async function migrateFromJSON() {
             process.stdout.write('x');
           }
         }
-        console.log('\n  ✅ Progress items migrated');
+        // console.log('\n  ✅ Progress items migrated');
       }
       
       else {
-        console.log(`  ⚠️ Unknown data type: ${dataType}`);
+        // console.log(`  ⚠️ Unknown data type: ${dataType}`);
       }
       
       // Create backup of original JSON
@@ -107,7 +107,7 @@ export async function migrateFromJSON() {
       }
       
       writeFileSync(backupPath, readFileSync(filePath));
-      console.log(`  📦 Backup created: backups/${file}`);
+      // console.log(`  📦 Backup created: backups/${file}`);
       
     } catch (error) {
       console.error(`  ❌ Error processing ${file}:`, error.message);
@@ -119,20 +119,20 @@ export async function migrateFromJSON() {
   }
   
   // Summary
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 Migration Summary:');
-  console.log(`  ✅ Successfully migrated: ${totalMigrated} items`);
-  console.log(`  ❌ Errors: ${errors.length}`);
+  // console.log('\n' + '='.repeat(50));
+  // console.log('📊 Migration Summary:');
+  // console.log(`  ✅ Successfully migrated: ${totalMigrated} items`);
+  // console.log(`  ❌ Errors: ${errors.length}`);
   
   if (errors.length > 0) {
-    console.log('\n⚠️ Migration errors:');
+    // console.log('\n⚠️ Migration errors:');
     errors.forEach(e => {
-      console.log(`  - ${e.file}: ${e.item || 'N/A'} - ${e.error}`);
+      // console.log(`  - ${e.file}: ${e.item || 'N/A'} - ${e.error}`);
     });
   }
   
-  console.log('\n✨ Migration complete!');
-  console.log('💡 Original JSON files have been backed up to data/backups/');
+  // console.log('\n✨ Migration complete!');
+  // console.log('💡 Original JSON files have been backed up to data/backups/');
   
   return {
     migrated: totalMigrated,
@@ -142,7 +142,7 @@ export async function migrateFromJSON() {
 
 // Test migration with sample data
 export async function testMigration() {
-  console.log('🧪 Testing migration with sample data...\n');
+  // console.log('🧪 Testing migration with sample data...\n');
   
   // Create test data
   const testDecisions = [
@@ -182,20 +182,20 @@ export async function testMigration() {
   // Initialize databases
   await initDatabases();
   
-  console.log('📝 Inserting test decisions...');
+  // console.log('📝 Inserting test decisions...');
   for (const decision of testDecisions) {
     const result = await recordDecision(decision);
-    console.log(`  ✅ Decision recorded: ID ${result.id}`);
+    // console.log(`  ✅ Decision recorded: ID ${result.id}`);
   }
   
-  console.log('\n📊 Inserting test progress...');
+  // console.log('\n📊 Inserting test progress...');
   for (const progress of testProgress) {
     const result = await trackProgress(progress);
-    console.log(`  ✅ Progress tracked: ID ${result}`);
+    // console.log(`  ✅ Progress tracked: ID ${result}`);
   }
   
-  console.log('\n✨ Test migration complete!');
-  console.log('💡 Check data/devassist.db and data/vectors/ for results');
+  // console.log('\n✨ Test migration complete!');
+  // console.log('💡 Check data/devassist.db and data/vectors/ for results');
 }
 
 // Run migration if called directly

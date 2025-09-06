@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-console.log('🔍 DevAssist MCP Server - Comprehensive Validation\n');
-console.log('='.repeat(60));
+// console.log('🔍 DevAssist MCP Server - Comprehensive Validation\n');
+// console.log('='.repeat(60));
 
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
@@ -63,41 +63,41 @@ const tests = [
   }
 ];
 
-console.log('\n📋 Validation Results:\n');
+// console.log('\n📋 Validation Results:\n');
 
 let allPassed = true;
 for (const test of tests) {
   try {
     const passed = test.check();
-    console.log(`${passed ? '✅' : '❌'} ${test.name}`);
+    // console.log(`${passed ? '✅' : '❌'} ${test.name}`);
     if (!passed) allPassed = false;
   } catch (error) {
-    console.log(`❌ ${test.name} - Error: ${error.message}`);
+    // console.log(`❌ ${test.name} - Error: ${error.message}`);
     allPassed = false;
   }
 }
 
-console.log('\n' + '='.repeat(60));
+// console.log('\n' + '='.repeat(60));
 
 if (allPassed) {
-  console.log('✨ All validations passed! System is ready.');
+  // console.log('✨ All validations passed! System is ready.');
 } else {
-  console.log('⚠️ Some validations failed. Please check the issues above.');
+  // console.log('⚠️ Some validations failed. Please check the issues above.');
 }
 
 // Summary of what's working
-console.log('\n📊 System Status Summary:');
-console.log('  • SQLite database: Operational');
-console.log('  • LanceDB vectors: Operational');
-console.log('  • Embedding generation: Working (384-dim)');
-console.log('  • MCP Server: v2.0 with full database support');
-console.log('  • Semantic search: Implemented with similarity scoring');
-console.log('  • Duplicate detection: Real similarity-based matching');
+// console.log('\n📊 System Status Summary:');
+// console.log('  • SQLite database: Operational');
+// console.log('  • LanceDB vectors: Operational');
+// console.log('  • Embedding generation: Working (384-dim)');
+// console.log('  • MCP Server: v2.0 with full database support');
+// console.log('  • Semantic search: Implemented with similarity scoring');
+// console.log('  • Duplicate detection: Real similarity-based matching');
 
-console.log('\n🚀 Key Improvements Delivered:');
-console.log('  • 10x faster searches with vector indexing');
-console.log('  • Real semantic understanding vs keyword matching');
-console.log('  • Concurrent access with SQLite WAL mode');
-console.log('  • Production-ready data persistence');
+// console.log('\n🚀 Key Improvements Delivered:');
+// console.log('  • 10x faster searches with vector indexing');
+// console.log('  • Real semantic understanding vs keyword matching');
+// console.log('  • Concurrent access with SQLite WAL mode');
+// console.log('  • Production-ready data persistence');
 
 process.exit(allPassed ? 0 : 1);

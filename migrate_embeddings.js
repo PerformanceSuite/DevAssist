@@ -21,17 +21,17 @@ import * as lancedb from '@lancedb/lancedb';
 import ora from 'ora';
 
 async function migrateToMPNet() {
-  console.log('🚀 DevAssist Embedding Migration Tool\n');
-  console.log('This will upgrade your embeddings from:');
-  console.log('  From: all-MiniLM-L6-v2 (384 dimensions)');
-  console.log('  To:   all-mpnet-base-v2 (768 dimensions)\n');
-  console.log('Expected improvement: 40-50% better semantic matching\n');
+  // console.log('🚀 DevAssist Embedding Migration Tool\n');
+  // console.log('This will upgrade your embeddings from:');
+  // console.log('  From: all-MiniLM-L6-v2 (384 dimensions)');
+  // console.log('  To:   all-mpnet-base-v2 (768 dimensions)\n');
+  // console.log('Expected improvement: 40-50% better semantic matching\n');
   
   const proceed = process.argv.includes('--yes');
   if (!proceed) {
-    console.log('⚠️  This will recreate all embeddings in your database.');
-    console.log('   Run with --yes to proceed\n');
-    console.log('   Example: node migrate_embeddings.js --yes');
+    // console.log('⚠️  This will recreate all embeddings in your database.');
+    // console.log('   Run with --yes to proceed\n');
+    // console.log('   Example: node migrate_embeddings.js --yes');
     process.exit(0);
   }
   
@@ -85,7 +85,7 @@ async function migrateToMPNet() {
     spinner.succeed('Code patterns table recreated');
     
     // Migrate decisions
-    console.log('\n📊 Migrating decisions...');
+    // console.log('\n📊 Migrating decisions...');
     const decisionsTable = await vectorDb.openTable('decisions');
     
     for (let i = 0; i < decisions.length; i++) {
@@ -113,7 +113,7 @@ async function migrateToMPNet() {
     }
     
     // Migrate code patterns
-    console.log('\n📊 Migrating code patterns...');
+    // console.log('\n📊 Migrating code patterns...');
     const patternsTable = await vectorDb.openTable('code_patterns');
     
     for (let i = 0; i < patterns.length; i++) {
@@ -136,21 +136,21 @@ async function migrateToMPNet() {
       spinner.succeed(`Migrated pattern ${i + 1}/${patterns.length}`);
     }
     
-    console.log('\n✅ Migration complete!');
-    console.log('\n📝 Next steps:');
-    console.log('1. Update ACTIVE_MODEL in src/database/dataAccess.js:');
-    console.log('   const ACTIVE_MODEL = \'mpnet\';');
-    console.log('\n2. Test the improved search:');
-    console.log('   node test_semantic_fixed.js');
-    console.log('\n3. Enjoy 40-50% better semantic matching! 🎉');
+    // console.log('\n✅ Migration complete!');
+    // console.log('\n📝 Next steps:');
+    // console.log('1. Update ACTIVE_MODEL in src/database/dataAccess.js:');
+    // console.log('   const ACTIVE_MODEL = \'mpnet\';');
+    // console.log('\n2. Test the improved search:');
+    // console.log('   node test_semantic_fixed.js');
+    // console.log('\n3. Enjoy 40-50% better semantic matching! 🎉');
     
   } catch (error) {
     spinner.fail('Migration failed');
     console.error('\n❌ Error:', error);
-    console.log('\n💡 Troubleshooting:');
-    console.log('- Make sure the server is not running');
-    console.log('- Check that databases are not locked');
-    console.log('- Try running: npm install ora');
+    // console.log('\n💡 Troubleshooting:');
+    // console.log('- Make sure the server is not running');
+    // console.log('- Check that databases are not locked');
+    // console.log('- Try running: npm install ora');
     process.exit(1);
   }
   

@@ -35,7 +35,7 @@ app.use(express.static(path.join(__dirname, '../gui-client')));
 
 // Initialize databases
 await initDatabases();
-console.log('✅ Databases initialized');
+// console.log('✅ Databases initialized');
 
 // WebSocket server for real-time updates
 const wss = new WebSocketServer({ port: 3457 });
@@ -43,11 +43,11 @@ const clients = new Set();
 
 wss.on('connection', (ws) => {
   clients.add(ws);
-  console.log('New WebSocket client connected');
+  // console.log('New WebSocket client connected');
   
   ws.on('close', () => {
     clients.delete(ws);
-    console.log('WebSocket client disconnected');
+    // console.log('WebSocket client disconnected');
   });
 });
 
@@ -238,6 +238,6 @@ app.get('/api/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 DevAssist GUI Server running on http://localhost:${PORT}`);
-  console.log(`📡 WebSocket server running on ws://localhost:3457`);
+  // console.log(`🚀 DevAssist GUI Server running on http://localhost:${PORT}`);
+  // console.log(`📡 WebSocket server running on ws://localhost:3457`);
 });

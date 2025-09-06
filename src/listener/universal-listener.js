@@ -49,11 +49,11 @@ class ListenerHub extends EventEmitter {
   }
 
   async initialize() {
-    console.log('🚀 DevAssist Universal Listener starting...');
+    // console.log('🚀 DevAssist Universal Listener starting...');
     await this.loadConfig();
     await this.setupListeners();
     this.startHeartbeat();
-    console.log('✅ All listeners active');
+    // console.log('✅ All listeners active');
   }
 
   async loadConfig() {
@@ -61,7 +61,7 @@ class ListenerHub extends EventEmitter {
       const configContent = await fs.readFile(CONFIG_PATH, 'utf8');
       this.config = yaml.load(configContent);
     } catch (error) {
-      console.log('📝 No config found, using defaults');
+      // console.log('📝 No config found, using defaults');
       this.config = this.getDefaultConfig();
       await this.saveConfig();
     }
@@ -166,7 +166,7 @@ class ListenerHub extends EventEmitter {
   }
 
   async setupGitListener() {
-    console.log('🔍 Setting up Git listener...');
+    // console.log('🔍 Setting up Git listener...');
     
     // Install git hooks in current project
     const gitHookPath = '.git/hooks/post-commit';
@@ -187,9 +187,9 @@ curl -X POST ${API_BASE}/decisions \\
 
     try {
       await fs.writeFile(gitHookPath, hookContent, { mode: 0o755 });
-      console.log('✅ Git hook installed');
+      // console.log('✅ Git hook installed');
     } catch (error) {
-      console.log('⚠️ Could not install git hook:', error.message);
+      // console.log('⚠️ Could not install git hook:', error.message);
     }
 
     // Monitor git commands globally
@@ -236,7 +236,7 @@ curl -X POST ${API_BASE}/decisions \\
   }
 
   async setupClaudeCodeListener() {
-    console.log('🤖 Setting up Claude Code listener...');
+    // console.log('🤖 Setting up Claude Code listener...');
     
     const claudeCodePath = this.config.listeners.claude_code.watch_path;
     
@@ -261,7 +261,7 @@ curl -X POST ${API_BASE}/decisions \\
   }
 
   async setupCursorListener() {
-    console.log('💻 Setting up Cursor listener...');
+    // console.log('💻 Setting up Cursor listener...');
     
     const cursorPath = this.config.listeners.cursor.watch_path;
     
@@ -287,7 +287,7 @@ curl -X POST ${API_BASE}/decisions \\
   }
 
   async setupFileWatchers() {
-    console.log('📁 Setting up file watchers...');
+    // console.log('📁 Setting up file watchers...');
     
     for (const watcherConfig of this.config.listeners.file_watchers) {
       if (!watcherConfig.enabled) continue;
@@ -312,12 +312,12 @@ curl -X POST ${API_BASE}/decisions \\
   }
 
   async setupBrowserBridge() {
-    console.log('🌐 Setting up browser bridge...');
+    // console.log('🌐 Setting up browser bridge...');
     
     const wss = new WebSocketServer({ port: this.config.listeners.browser.port });
     
     wss.on('connection', (ws) => {
-      console.log('Browser extension connected');
+      // console.log('Browser extension connected');
       
       ws.on('message', async (data) => {
         try {
@@ -342,7 +342,7 @@ curl -X POST ${API_BASE}/decisions \\
     });
 
     this.sources.set('browser-bridge', wss);
-    console.log(`✅ WebSocket server running on ws://localhost:${this.config.listeners.browser.port}`);
+    // console.log(`✅ WebSocket server running on ws://localhost:${this.config.listeners.browser.port}`);
   }
 
   async processAIFile(filepath, source) {
@@ -490,7 +490,7 @@ curl -X POST ${API_BASE}/decisions \\
       });
       
       this.stats.decisions++;
-      console.log(`✅ Decision recorded from ${data.source}: "${data.decision.substring(0, 50)}..."`);
+      // console.log(`✅ Decision recorded from ${data.source}: "${data.decision.substring(0, 50)}..."`);
       
       return response.data;
     } catch (error) {
@@ -509,7 +509,7 @@ curl -X POST ${API_BASE}/decisions \\
       });
       
       this.stats.patterns++;
-      console.log(`✅ Pattern recorded from ${data.source}`);
+      // console.log(`✅ Pattern recorded from ${data.source}`);
       
       return response.data;
     } catch (error) {
@@ -522,7 +522,7 @@ curl -X POST ${API_BASE}/decisions \\
     // Regular status updates
     setInterval(() => {
       const uptime = Math.floor((Date.now() - this.stats.startTime) / 1000);
-      console.log(`
+      // console.log(`
 📊 DevAssist Listener Status
   Uptime: ${Math.floor(uptime / 60)}m ${uptime % 60}s
   Decisions: ${this.stats.decisions}
@@ -536,7 +536,7 @@ curl -X POST ${API_BASE}/decisions \\
   }
 
   async shutdown() {
-    console.log('🛑 Shutting down listeners...');
+    // console.log('🛑 Shutting down listeners...');
     
     for (const [name, source] of this.sources) {
       if (source.close) {
@@ -546,7 +546,7 @@ curl -X POST ${API_BASE}/decisions \\
       }
     }
     
-    console.log('Goodbye! 👋');
+    // console.log('Goodbye! 👋');
     process.exit(0);
   }
 }

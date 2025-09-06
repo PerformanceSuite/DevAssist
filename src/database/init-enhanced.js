@@ -58,7 +58,7 @@ function ensureDirectories(paths) {
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
-      console.log(`✅ Created directory: ${dir}`);
+      // // console.log(`✅ Created directory: ${dir}`);
     }
   }
 }
@@ -68,8 +68,8 @@ function ensureDirectories(paths) {
  */
 export function initSQLite(paths) {
   const dbPath = paths.sqlitePath;
-  console.log(`Initializing SQLite for project: ${paths.projectName}`);
-  console.log(`Database path: ${dbPath}`);
+  // // console.log(`Initializing SQLite for project: ${paths.projectName}`);
+  // // console.log(`Database path: ${dbPath}`);
   
   const db = new Database(dbPath);
   
@@ -225,7 +225,7 @@ export function initSQLite(paths) {
     })
   );
   
-  console.log(`✅ SQLite database initialized for project: ${paths.projectName}`);
+  // // console.log(`✅ SQLite database initialized for project: ${paths.projectName}`);
   return db;
 }
 
@@ -234,8 +234,8 @@ export function initSQLite(paths) {
  */
 export async function initVectorDB(paths) {
   try {
-    console.log(`Initializing LanceDB for project: ${paths.projectName}`);
-    console.log(`Vector DB path: ${paths.vectorDir}`);
+    // // console.log(`Initializing LanceDB for project: ${paths.projectName}`);
+    // // console.log(`Vector DB path: ${paths.vectorDir}`);
     
     // Connect to project-specific LanceDB
     const db = await lancedb.connect(paths.vectorDir);
@@ -285,7 +285,7 @@ export async function initVectorDB(paths) {
         session_id: 'init',
         timestamp: new Date().toISOString()
       }]);
-      console.log(`✅ Created LanceDB table: decisions for ${paths.projectName}`);
+      // // console.log(`✅ Created LanceDB table: decisions for ${paths.projectName}`);
     }
     
     if (!tables.includes('code_patterns')) {
@@ -298,7 +298,7 @@ export async function initVectorDB(paths) {
         language: 'unknown',
         session_id: 'init'
       }]);
-      console.log(`✅ Created LanceDB table: code_patterns for ${paths.projectName}`);
+      // // console.log(`✅ Created LanceDB table: code_patterns for ${paths.projectName}`);
     }
     
     if (!tables.includes('documentation')) {
@@ -311,10 +311,10 @@ export async function initVectorDB(paths) {
         source: 'project',
         path: '/init'
       }]);
-      console.log(`✅ Created LanceDB table: documentation for ${paths.projectName}`);
+      // // console.log(`✅ Created LanceDB table: documentation for ${paths.projectName}`);
     }
     
-    console.log(`✅ LanceDB initialized for project: ${paths.projectName}`);
+    // // console.log(`✅ LanceDB initialized for project: ${paths.projectName}`);
     return db;
   } catch (error) {
     console.error(`❌ LanceDB initialization error for ${paths.projectName}:`, error);
@@ -375,7 +375,7 @@ export class ProjectIsolation {
       return false;
     }
     
-    console.log(`✅ Project isolation verified for: ${this.projectName}`);
+    // // console.log(`✅ Project isolation verified for: ${this.projectName}`);
     return true;
   }
 }
@@ -384,15 +384,15 @@ export class ProjectIsolation {
  * Combined initialization with project isolation
  */
 export async function initDatabases() {
-  console.log('🚀 Initializing DevAssist databases with project isolation...');
+  // // console.log('🚀 Initializing DevAssist databases with project isolation...');
   
   // Get project-specific paths
   const paths = getProjectPaths();
   
-  console.log('📁 Project configuration:');
-  console.log(`  Project: ${paths.projectName}`);
-  console.log(`  Path: ${paths.projectPath}`);
-  console.log(`  Data: ${paths.dataDir}`);
+  // // console.log('📁 Project configuration:');
+  // // console.log(`  Project: ${paths.projectName}`);
+  // // console.log(`  Path: ${paths.projectPath}`);
+  // // console.log(`  Data: ${paths.dataDir}`);
   
   // Ensure directories exist
   ensureDirectories(paths);
@@ -419,7 +419,7 @@ export async function initDatabases() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   initDatabases()
     .then(() => {
-      console.log('✅ All databases initialized successfully with project isolation');
+      // // console.log('✅ All databases initialized successfully with project isolation');
       process.exit(0);
     })
     .catch(error => {

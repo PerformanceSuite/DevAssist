@@ -108,7 +108,7 @@ export function initSQLite() {
     END;
   `);
   
-  console.log('✅ SQLite database initialized successfully');
+  // console.log('✅ SQLite database initialized successfully');
   return db;
 }
 
@@ -148,7 +148,7 @@ export async function initVectorDB() {
         embedding: new Array(384).fill(0), // Placeholder embedding
         metadata: '{}'
       }]);
-      console.log('✅ Created LanceDB table: decisions');
+      // console.log('✅ Created LanceDB table: decisions');
     }
     
     if (!tables.includes('code_patterns')) {
@@ -160,10 +160,10 @@ export async function initVectorDB() {
         embedding: new Array(384).fill(0), // Placeholder embedding
         language: 'unknown'
       }]);
-      console.log('✅ Created LanceDB table: code_patterns');
+      // console.log('✅ Created LanceDB table: code_patterns');
     }
     
-    console.log('✅ LanceDB initialized successfully');
+    // console.log('✅ LanceDB initialized successfully');
     return db;
   } catch (error) {
     console.error('❌ LanceDB initialization error:', error);
@@ -183,7 +183,7 @@ export async function initDatabases() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   initDatabases()
     .then(() => {
-      console.log('✅ All databases initialized successfully');
+      // console.log('✅ All databases initialized successfully');
       process.exit(0);
     })
     .catch(error => {

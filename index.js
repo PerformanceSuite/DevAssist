@@ -2,7 +2,10 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { execSync } from 'child_process';
+import { execSync, exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -29,6 +32,9 @@ import {
 
 // Import SESSION management for continuity
 import { getSessionManager } from './src/session/persistence.js';
+import { createWarmUpManager } from './src/session/warmup.js';
+import { createSessionStartupEnhancer } from './src/session/startup-enhancer.js';
+import { createSessionHeartbeat } from './src/session/heartbeat.js';
 
 // Import original documentation resources (keeping for compatibility)
 import { 
@@ -38,6 +44,10 @@ import {
   getDocumentationPath
 } from './src/resources/documentationResources.js';
 
+// Import orchestration and command system
+import { InitProjectCommand } from './src/commands/initproject.js';
+import { ProjectOrchestrator } from './src/agents/project-orchestrator.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -46,11 +56,24 @@ let dbInitialized = false;
 let databases = null;
 let sessionManager = null;
 let projectIsolation = null;
+let warmUpManager = null;
+let startupEnhancer = null;
+let sessionHeartbeat = null;
 
 // Enhanced initialization with project isolation
 async function ensureDbInitialized() {
   if (!dbInitialized) {
-    console.log('🚀 Initializing DevAssist with enhanced features...');
+    // Check if this project has its own DevAssist (no generic allowed)
+    const projectPath = process.env.DEVASSIST_PROJECT_PATH || process.cwd();
+    const noGenericPath = path.join(projectPath, '.devassist/.no-generic');
+    
+    if (existsSync(noGenericPath)) {
+      console.error('This project uses its own DevAssist instance.');
+      console.error('Generic DevAssist is disabled here.');
+      process.exit(0);
+    }
+    
+    // console.log('🚀 Initializing DevAssist with enhanced features...');
     
     // Initialize with project isolation
     databases = await initDatabases();
@@ -62,13 +85,30 @@ async function ensureDbInitialized() {
       databases.sqlite
     );
     
+    // Set up warm-up manager
+    warmUpManager = createWarmUpManager(
+      databases.paths.projectPath,
+      databases,
+      sessionManager
+    );
+    
+    // Set up startup enhancer for actionable session starts
+    startupEnhancer = createSessionStartupEnhancer(
+      sessionManager,
+      databases,
+      warmUpManager
+    );
+    
+    // Set up session heartbeat for long sprints
+    sessionHeartbeat = createSessionHeartbeat(sessionManager);
+    
     // Store isolation validator
     projectIsolation = databases.isolation;
     
     dbInitialized = true;
     
-    console.log(`✅ DevAssist ready for project: ${databases.projectName}`);
-    console.log(`📁 Data path: ${databases.dataPath}`);
+    // console.log(`✅ DevAssist ready for project: ${databases.projectName}`);
+    // console.log(`📁 Data path: ${databases.dataPath}`);
   }
   
   return { databases, sessionManager, projectIsolation };
@@ -376,6 +416,88 @@ const tools = [
         },
       },
       required: ['summary'],
+    },
+  },
+  {
+    name: 'initproject',
+    description: 'Initialize project with full orchestration, warmup, subagents, and cleanup routines',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Project path to initialize',
+          default: '.',
+        },
+        skipDocumentation: {
+          type: 'boolean',
+          description: 'Skip documentation setup',
+          default: false,
+        },
+        documentation: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Documentation types to create (README, ARCHITECTURE, API)',
+          default: ['README', 'ARCHITECTURE', 'API'],
+        },
+      },
+    },
+  },
+  {
+    name: 'session-start',
+    description: 'Start development session with warmup (slash command: /session-start)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: {
+          type: 'string',
+          description: 'Project name (optional, uses current project if not specified)',
+        },
+        description: {
+          type: 'string',
+          description: 'Session description',
+          default: 'Development session',
+        },
+      },
+    },
+  },
+  {
+    name: 'session-end', 
+    description: 'End development session with cleanup (slash command: /session-end)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: {
+          type: 'string',
+          description: 'Project name (optional, uses current project if not specified)',
+        },
+      },
+    },
+  },
+  {
+    name: 'session-status',
+    description: 'Check session and warmup status (slash command: /session-status)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project: {
+          type: 'string',
+          description: 'Project name (optional, uses current project if not specified)',
+        },
+      },
+    },
+  },
+  {
+    name: 'sprint-check',
+    description: 'Quick sprint progress check to keep DevAssist engaged',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          description: 'Optional status update or note',
+        },
+      },
     },
   },
 ];
@@ -968,33 +1090,33 @@ Use get_project_memory for detailed information on any item.`,
         const { description = 'Development session' } = isolatedArgs || {};
         
         try {
-          const result = await sessionManager.startSession({ description });
+          // Run project-specific warmup if it exists
+          const projectPath = databases.paths.projectPath || process.cwd();
+          const warmupScriptPath = path.join(projectPath, '.devassist/warmup.sh');
+          const warmupJsPath = path.join(projectPath, '.devassist/warmup/warmup.js');
           
-          let contextInfo = '';
-          if (result.previousContext) {
-            contextInfo = `\n📚 Previous Context Loaded:
-  - Session: ${result.previousContext.session.id}
-  - Knowledge items: ${result.previousContext.knowledge?.length || 0}
-  - Summary: ${result.previousContext.summary || 'No summary'}`;
+          if (existsSync(warmupScriptPath)) {
+            console.error('[START_SESSION] Running project warmup script...');
+            try {
+              await execAsync(`bash "${warmupScriptPath}"`, { cwd: projectPath });
+            } catch (warmupError) {
+              console.error('[START_SESSION] Warmup script error:', warmupError.message);
+            }
+          } else if (existsSync(warmupJsPath)) {
+            console.error('[START_SESSION] Running project warmup...');
+            try {
+              await execAsync(`node "${warmupJsPath}"`, { cwd: projectPath });
+            } catch (warmupError) {
+              console.error('[START_SESSION] Warmup error:', warmupError.message);
+            }
           }
           
-          return {
-            content: [{
-              type: 'text',
-              text: `🚀 Session Started Successfully!
-
-Session ID: ${result.session.id}
-Project: ${result.session.project}
-Started: ${result.session.started_at}
-${contextInfo}
-
-✅ DevAssist is tracking this session
-✅ Knowledge will be preserved
-✅ Terminal logging path: ${result.session.metadata.terminal_log}
-
-Use session_checkpoint to save progress during work.`
-            }]
-          };
+          // Use the enhanced startup that includes warm-up and sprint status
+          // console.log('🔥 Starting enhanced session with warm-up and sprint status...');
+          const enhancedResult = await startupEnhancer.startEnhancedSession(description);
+          
+          // Return the actionable report, not open-ended questions
+          return enhancedResult;
         } catch (error) {
           return {
             content: [{
@@ -1007,7 +1129,31 @@ Use session_checkpoint to save progress during work.`
 
       case 'end_session': {
         try {
+          // First run the cleanup agent if it exists
+          const projectPath = databases.paths.projectPath || process.cwd();
+          const cleanupAgentPath = path.join(projectPath, '.devassist/agents/cleanup.js');
+          
+          if (existsSync(cleanupAgentPath)) {
+            console.error('[END_SESSION] Running cleanup agent...');
+            try {
+              await execAsync(`node "${cleanupAgentPath}"`, { cwd: projectPath });
+            } catch (cleanupError) {
+              console.error('[END_SESSION] Cleanup agent error:', cleanupError.message);
+            }
+          }
+          
+          // Then run the normal session end
           const summary = await sessionManager.endSession();
+          
+          // Also run the session-end hook if it exists
+          const hookPath = path.join(projectPath, '.devassist/session-end-hook.js');
+          if (existsSync(hookPath)) {
+            try {
+              await execAsync(`node "${hookPath}"`, { cwd: projectPath });
+            } catch (hookError) {
+              console.error('[END_SESSION] Hook error:', hookError.message);
+            }
+          }
           
           return {
             content: [{
@@ -1018,6 +1164,7 @@ ${summary}
 
 ✅ Knowledge preserved for next session
 ✅ Terminal logs saved
+✅ Cleanup agent executed
 ✅ Context ready for continuity
 
 Start a new session anytime with start_session.`
@@ -1057,6 +1204,264 @@ Continue working - session is still active.`
             content: [{
               type: 'text',
               text: `Error creating checkpoint: ${error.message}`
+            }]
+          };
+        }
+      }
+      
+      case 'session-start': {
+        // This is the slash command version that works like /initproject
+        const { project, description = 'Development session' } = isolatedArgs || {};
+        
+        try {
+          // If project specified, switch to it
+          if (project) {
+            const projectPath = path.join(process.env.PROJECT_ROOT || '/Users/danielconnolly/Projects', project);
+            process.env.DEVASSIST_PROJECT = project;
+            process.env.DEVASSIST_PROJECT_PATH = projectPath;
+            
+            // Re-initialize databases for the new project
+            databases = await initDatabases();
+            sessionManager = getSessionManager(
+              databases.projectName,
+              databases.paths,
+              databases.sqlite
+            );
+            warmUpManager = createWarmUpManager(
+              databases.paths.projectPath,
+              databases,
+              sessionManager
+            );
+            startupEnhancer = createSessionStartupEnhancer(
+              sessionManager,
+              databases,
+              warmUpManager
+            );
+          }
+          
+          // Run the same logic as start_session
+          const projectPath = databases.paths.projectPath || process.cwd();
+          const warmupScriptPath = path.join(projectPath, '.devassist/warmup.sh');
+          const warmupJsPath = path.join(projectPath, '.devassist/warmup.js');
+          
+          if (existsSync(warmupScriptPath)) {
+            console.error('[/SESSION-START] Running project warmup script...');
+            try {
+              await execAsync(`bash "${warmupScriptPath}"`, { cwd: projectPath });
+            } catch (warmupError) {
+              console.error('[/SESSION-START] Warmup script error:', warmupError.message);
+            }
+          } else if (existsSync(warmupJsPath)) {
+            console.error('[/SESSION-START] Running project warmup...');
+            try {
+              await execAsync(`node "${warmupJsPath}"`, { cwd: projectPath });
+            } catch (warmupError) {
+              console.error('[/SESSION-START] Warmup error:', warmupError.message);
+            }
+          }
+          
+          // Use the enhanced startup that includes warm-up
+          console.error('🔥 Starting enhanced session with warm-up...');
+          const enhancedResult = await startupEnhancer.startEnhancedSession(description);
+          
+          // Start heartbeat for long sprints
+          if (sessionHeartbeat) {
+            sessionHeartbeat.start();
+            console.error('💓 Session heartbeat activated for long sprints');
+          }
+          
+          return enhancedResult;
+        } catch (error) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Error starting session: ${error.message}`
+            }]
+          };
+        }
+      }
+
+      case 'session-end': {
+        // This is the slash command version
+        const { project } = isolatedArgs || {};
+        
+        try {
+          if (project) {
+            process.env.DEVASSIST_PROJECT = project;
+          }
+          
+          // Run cleanup agent if it exists
+          const projectPath = databases.paths.projectPath || process.cwd();
+          const cleanupAgentPath = path.join(projectPath, '.devassist/agents/cleanup.js');
+          
+          if (existsSync(cleanupAgentPath)) {
+            console.error('[/SESSION-END] 🧹 Running cleanup agent...');
+            try {
+              await execAsync(`node "${cleanupAgentPath}"`, { cwd: projectPath });
+            } catch (cleanupError) {
+              console.error('[/SESSION-END] Cleanup agent error:', cleanupError.message);
+            }
+          }
+          
+          // Stop heartbeat
+          if (sessionHeartbeat) {
+            sessionHeartbeat.stop();
+          }
+          
+          // Run the normal session end
+          const summary = await sessionManager.endSession();
+          
+          // Also run the session-end hook if it exists
+          const hookPath = path.join(projectPath, '.devassist/session-end-hook.js');
+          if (existsSync(hookPath)) {
+            try {
+              await execAsync(`node "${hookPath}"`, { cwd: projectPath });
+            } catch (hookError) {
+              console.error('[/SESSION-END] Hook error:', hookError.message);
+            }
+          }
+          
+          return {
+            content: [{
+              type: 'text',
+              text: `🏁 Session Ended Successfully!
+
+${summary}
+
+✅ Knowledge preserved for next session
+✅ Terminal logs saved
+✅ Cleanup agent executed
+✅ Context ready for continuity
+
+Start a new session anytime with /session-start.`
+            }]
+          };
+        } catch (error) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Error ending session: ${error.message}`
+            }]
+          };
+        }
+      }
+
+      case 'session-status': {
+        const { project } = isolatedArgs || {};
+        
+        if (project) {
+          process.env.DEVASSIST_PROJECT = project;
+        }
+        
+        const status = sessionManager ? sessionManager.getStatus() : null;
+        const projectName = databases.projectName;
+        
+        if (!status || !status.active) {
+          return {
+            content: [{
+              type: 'text', 
+              text: `📊 No active session for project: ${projectName}
+
+Use /session-start to begin a new session with warmup.`
+            }]
+          };
+        }
+        
+        return {
+          content: [{
+            type: 'text',
+            text: `📊 Session Status for ${projectName}:
+
+🟢 Active Session: ${status.session}
+📝 Knowledge items: ${status.knowledge}
+🎯 Decisions made: ${status.decisions || 0}
+⏱️ Duration: ${status.duration || 'Unknown'}
+
+Warmup status: ${warmUpManager ? '✅ Ready' : '⚠️ Not initialized'}
+Cleanup agent: ${existsSync(path.join(databases.paths.projectPath, '.devassist/agents/cleanup.js')) ? '✅ Available' : '❌ Not found'}`
+          }]
+        };
+      }
+
+      case 'sprint-check': {
+        const { message } = isolatedArgs || {};
+        
+        // Record activity to keep DevAssist engaged
+        if (sessionHeartbeat) {
+          sessionHeartbeat.recordActivity();
+        }
+        
+        // Get current sprint status
+        const projectPath = databases.paths.projectPath || process.cwd();
+        let sprintStatus = '';
+        
+        try {
+          // Check for sprint file
+          const sprintFiles = ['SPRINT_BLOCKCHAIN_INTEGRATION.md', 'SPRINT.md', 'TODO.md'];
+          for (const file of sprintFiles) {
+            const filePath = path.join(projectPath, file);
+            if (existsSync(filePath)) {
+              const content = readFileSync(filePath, 'utf8');
+              const lines = content.split('\n');
+              const completed = lines.filter(l => l.includes('✅')).length;
+              const total = lines.filter(l => l.match(/^\d+\./)).length;
+              
+              if (total > 0) {
+                sprintStatus = `Sprint Progress: ${completed}/${total} tasks (${Math.round(completed/total * 100)}%)`;
+                break;
+              }
+            }
+          }
+        } catch {}
+        
+        // Check git status
+        let gitStatus = '';
+        try {
+          const { stdout } = await execAsync('git status --porcelain', { cwd: projectPath });
+          const changes = stdout.split('\n').filter(l => l.trim()).length;
+          gitStatus = `Git: ${changes} uncommitted changes`;
+        } catch {}
+        
+        // Add to session if message provided
+        if (message && sessionManager) {
+          sessionManager.addKnowledge({
+            type: 'sprint-check',
+            message: message,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        return {
+          content: [{
+            type: 'text',
+            text: `💓 DevAssist Active!
+
+${sprintStatus || 'No sprint file found'}
+${gitStatus}
+${message ? `\n📝 Note recorded: ${message}` : ''}
+
+Session is warm and context maintained.
+Use /sprint-check periodically during long sessions to keep DevAssist engaged.`
+          }]
+        };
+      }
+
+      case 'initproject': {
+        // Auto-detect project from current directory
+        const projectPath = process.cwd();
+        
+        try {
+          // Create and execute the enhanced InitProject command
+          const initCommand = new InitProjectCommand();
+          const result = await initCommand.execute({ path: projectPath });
+          
+          // Return the result directly (it now includes the full report)
+          return result;
+        } catch (error) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Error initializing project: ${error.message}`
             }]
           };
         }
