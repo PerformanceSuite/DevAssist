@@ -1,0 +1,148 @@
+[
+  {
+    "name": "initproject",
+    "description": "Initialize DevAssist for a project - sets up GitHub integration and development environment",
+    "namespace": "devassist",
+    "handler": "initproject_handler",
+    "priority": 10,
+    "input": {
+      "exposed": {
+        "path": {
+          "type": "string",
+          "description": "Project path (defaults to current directory)",
+          "default": "."
+        }
+      },
+      "hidden": {
+        "skipDocumentation": false,
+        "autoSetup": true,
+        "timestamp": "$$TIMESTAMP$$"
+      },
+      "validation": null
+    },
+    "output": {
+      "filter": ["success", "projectName", "message"],
+      "transform": null
+    }
+  },
+  {
+    "name": "start",
+    "description": "Start a development session",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 9,
+    "input": {
+      "exposed": {
+        "description": {
+          "type": "string",
+          "description": "What you'll be working on",
+          "default": "Development session"
+        }
+      },
+      "hidden": {
+        "action": "start",
+        "sessionId": "$$GENERATE_ID$$"
+      }
+    },
+    "output": {
+      "filter": ["sessionId", "status", "message"]
+    }
+  },
+  {
+    "name": "checkpoint",
+    "description": "Save progress checkpoint",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 8,
+    "input": {
+      "exposed": {
+        "summary": {
+          "type": "string",
+          "description": "What was accomplished",
+          "required": true
+        }
+      },
+      "hidden": {
+        "action": "checkpoint",
+        "timestamp": "$$TIMESTAMP$$"
+      }
+    },
+    "output": {
+      "filter": ["success", "message"]
+    }
+  },
+  {
+    "name": "end",
+    "description": "End the current session",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 7,
+    "input": {
+      "exposed": {},
+      "hidden": {
+        "action": "end",
+        "generateSummary": true
+      }
+    },
+    "output": {
+      "filter": ["summary", "duration", "checkpoints"]
+    }
+  },
+  {
+    "name": "status",
+    "description": "Get current project and session status",
+    "namespace": "devassist",
+    "handler": "status_handler",
+    "priority": 8,
+    "input": {
+      "exposed": {
+        "verbose": {
+          "type": "boolean",
+          "description": "Include detailed information",
+          "default": false
+        }
+      },
+      "hidden": {
+        "includeMetrics": true
+      }
+    },
+    "output": {
+      "filter": ["project", "session", "metrics"]
+    }
+  },
+  {
+    "name": "decide",
+    "description": "Record an architectural decision",
+    "namespace": "devassist",
+    "handler": "decision_handler",
+    "priority": 6,
+    "input": {
+      "exposed": {
+        "decision": {
+          "type": "string",
+          "description": "The decision made",
+          "required": true
+        },
+        "context": {
+          "type": "string",
+          "description": "Why this decision was made",
+          "required": true
+        },
+        "alternatives": {
+          "type": "array",
+          "description": "Other options considered",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "hidden": {
+        "timestamp": "$$TIMESTAMP$$",
+        "sessionId": "$$CURRENT_SESSION$$"
+      }
+    },
+    "output": {
+      "filter": ["id", "decision", "recorded"]
+    }
+  }
+]

@@ -16,7 +16,7 @@ export class InitProjectCommand {
   constructor() {
     this.orchestrator = new ProjectOrchestrator();
     this.name = 'initproject';
-    this.description = 'Initialize a new project with DevAssist - sets up GitHub integration, Claude configuration, and development environment';
+    this.description = 'Initialize project with DevAssist (language & infrastructure aware)';
   }
 
   /**

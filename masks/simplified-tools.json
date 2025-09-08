@@ -1,0 +1,105 @@
+[
+  {
+    "name": "quick-init",
+    "description": "Quick project initialization with sensible defaults",
+    "namespace": "devassist",
+    "handler": "initproject_handler",
+    "priority": 15,
+    "input": {
+      "exposed": {},
+      "hidden": {
+        "path": ".",
+        "skipDocumentation": false,
+        "autoSetup": true,
+        "timestamp": "$$TIMESTAMP$$"
+      }
+    },
+    "output": {
+      "filter": ["success", "projectName", "message"],
+      "transform": null
+    }
+  },
+  {
+    "name": "work",
+    "description": "Start working on something (alias for session start)",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 10,
+    "input": {
+      "exposed": {
+        "on": {
+          "type": "string",
+          "description": "What are you working on?",
+          "required": true
+        }
+      },
+      "hidden": {
+        "action": "start",
+        "description": "$$REMAP:on$$",
+        "sessionId": "$$GENERATE_ID$$"
+      }
+    },
+    "output": {
+      "filter": ["sessionId", "message"]
+    }
+  },
+  {
+    "name": "save",
+    "description": "Quick save of current progress",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 10,
+    "input": {
+      "exposed": {
+        "note": {
+          "type": "string",
+          "description": "Quick note about progress",
+          "default": "Progress saved"
+        }
+      },
+      "hidden": {
+        "action": "checkpoint",
+        "summary": "$$REMAP:note$$",
+        "timestamp": "$$TIMESTAMP$$"
+      }
+    },
+    "output": {
+      "filter": ["success", "message"]
+    }
+  },
+  {
+    "name": "done",
+    "description": "Finish current work session",
+    "namespace": "devassist",
+    "handler": "session_handler",
+    "priority": 10,
+    "input": {
+      "exposed": {},
+      "hidden": {
+        "action": "end",
+        "generateSummary": true
+      }
+    },
+    "output": {
+      "filter": ["summary"],
+      "transform": null
+    }
+  },
+  {
+    "name": "whats-next",
+    "description": "Get suggestions for what to work on next",
+    "namespace": "devassist",
+    "handler": "status_handler",
+    "priority": 5,
+    "input": {
+      "exposed": {},
+      "hidden": {
+        "verbose": true,
+        "includeSuggestions": true
+      }
+    },
+    "output": {
+      "filter": ["project", "session", "suggestions"]
+    }
+  }
+]
