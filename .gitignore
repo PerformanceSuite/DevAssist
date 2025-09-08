@@ -48,3 +48,11 @@ build/
 # Temporary files
 *.tmp
 temp/
+# Archives and backups
+.archive/
+.backups/
+# Session files
+.devassist/sessions/*.log
+.devassist/archive/
+# Test artifacts
+coverage/
