@@ -42,7 +42,10 @@ import {
 import { ProjectManager } from './src/project-manager.js';
 import { SessionManager } from './src/session/session-manager.js';
 import { KnowledgeManager } from './src/knowledge-manager.cjs';
-import { InitProjectCommand } from './src/commands/initproject.js';
+import { WarmUpManager } from './src/session/warmup.js';
+import { createSessionHeartbeat } from './src/session/heartbeat.js';
+import { CleanupManager } from './src/session/cleanup-manager.js';
+import { TerminalLogger } from './src/session/terminal-logger.js';
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -57,6 +60,7 @@ const knowledgeManager = new KnowledgeManager();
 
 // Session managers per project
 const sessionManagers = new Map();
+const activeHeartbeats = new Map(); // Track heartbeats per project
 
 async function getSessionManager(project) {
   if (!project) return null;
@@ -247,18 +251,13 @@ async function initialize() {
       switch (name) {
         case 'initproject':
         case 'setup-project': {
-          const initCommand = new InitProjectCommand();
-          const result = await initCommand.execute(args);
-          
-          // Register the new project with autoCreate=true to create directories
-          const projectPath = path.resolve(args.path || '.');
-          const projectName = path.basename(projectPath);
-          await projectManager.registerProject(projectName, projectPath, true);
-          
+          // Now handled by Prjctzr
           return {
             content: [{
               type: 'text',
-              text: result,
+              text: `⚠️ Project initialization is now handled by Prjctzr!\n\n` +
+                    `Use: prjctzr:init name="${args.name || 'my-project'}" features=["devassist"]\n\n` +
+                    `This will create the project AND set up DevAssist infrastructure.`,
             }],
           };
         }
@@ -301,10 +300,35 @@ async function initialize() {
           const sessionManager = await getSessionManager(project);
           const session = await sessionManager.startSession(args.description);
           
+          // Perform warmup if enabled
+          let warmupStatus = '';
+          if (process.env.DEVASSIST_WARMUP_ENABLED !== 'false') {
+            try {
+              const warmupManager = new WarmUpManager(project.path, {}, sessionManager);
+              const warmupResult = await warmupManager.performWarmUp(session.id);
+              if (warmupResult.performed) {
+                warmupStatus = '\n🔥 Warmup complete - context preloaded';
+              }
+            } catch (error) {
+              console.error('[DevAssist] Warmup error:', error);
+            }
+          }
+          
+          // Start terminal logging
+          const terminalLogger = new TerminalLogger(project.path, session.id);
+          await terminalLogger.startLogging();
+          
+          // Start heartbeat for long sessions
+          const heartbeat = createSessionHeartbeat(sessionManager);
+          heartbeat.start();
+          
+          // Track both for cleanup
+          activeHeartbeats.set(project.name, { heartbeat, terminalLogger });
+          
           return {
             content: [{
               type: 'text',
-              text: `✅ Started session for ${project.name}\nID: ${session.id}\nDescription: ${session.description}`,
+              text: `✅ Started session for ${project.name}\nID: ${session.id}\nDescription: ${session.description}${warmupStatus}\n💓 Heartbeat active - staying engaged\n📝 Terminal logging enabled`,
             }],
           };
         }
@@ -343,12 +367,25 @@ async function initialize() {
           }
           
           const sessionManager = await getSessionManager(project);
+          
+          // Perform cleanup before ending session
+          const cleanupManager = new CleanupManager(project.path, sessionManager.currentSession?.id);
+          const cleanupReport = await cleanupManager.performCleanup();
+          
           const summary = await sessionManager.endSession();
+          
+          // Stop heartbeat and terminal logging if active
+          const trackers = activeHeartbeats.get(project.name);
+          if (trackers) {
+            trackers.heartbeat?.stop();
+            await trackers.terminalLogger?.stopLogging();
+            activeHeartbeats.delete(project.name);
+          }
           
           return {
             content: [{
               type: 'text',
-              text: `🏁 Session ended for ${project.name}\n\n${summary}`,
+              text: `🏁 Session ended for ${project.name}\n💓 Heartbeat stopped\n📝 Terminal logging stopped\n🧹 Cleanup complete\n\n${summary}\n\n${cleanupReport}`,
             }],
           };
         }

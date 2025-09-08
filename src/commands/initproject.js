@@ -5,6 +5,7 @@
 
 import { ProjectOrchestrator } from '../agents/project-orchestrator.js';
 import { createSubagentManager } from '../agents/subagent-manager.js';
+import { TechDocsFetcher } from '../documentation/tech-docs-fetcher.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -909,7 +910,8 @@ Infrastructure managed by Terraform.
       projectPath,
       analysis,
       infraAgents,
-      knowledge
+      knowledge,
+      docsResult
     } = config;
     
     const infraTools = analysis.infrastructure.tools.join(', ') || 'None';
@@ -941,7 +943,10 @@ Infrastructure managed by Terraform.
 🤖 Infrastructure Agents Created:
 ${infraAgentList}
 
-📚 Documentation Created:
+📚 Documentation Status:
+${docsResult ? docsResult.summary : '  • No documentation fetched'}
+
+📄 Project Documentation Created:
   • README.md - Project overview with infrastructure
 ${analysis.infrastructure.iac.includes('Dagger') ? '  • DAGGER.md - Dagger pipeline documentation' : ''}
 ${analysis.infrastructure.orchestration.includes('Kubernetes') ? '  • KUBERNETES.md - Kubernetes deployment guide' : ''}
@@ -1025,6 +1030,22 @@ ${knowledge.documentation.map(d => `  • ${d.tool}: ${d.description}`).join('\n
       console.error('▶ Analyzing project (languages & infrastructure)...');
       const analysis = await this.deepAnalyzeProject(projectPath);
       
+      // Fetch documentation for detected technologies
+      console.error('\n▶ Fetching documentation for detected technologies...');
+      const docsFetcher = new TechDocsFetcher();
+      await docsFetcher.initialize();
+      
+      // Combine all detected technologies
+      const allTechnologies = [
+        ...analysis.primaryLanguages,
+        ...analysis.infrastructure.tools,
+        ...analysis.infrastructure.orchestration,
+        ...analysis.infrastructure.iac,
+        ...analysis.infrastructure.cicd
+      ].filter((tech, index, self) => self.indexOf(tech) === index); // Remove duplicates
+      
+      const docsResult = await docsFetcher.fetchDocsForTechnologies(allTechnologies);
+      
       // Create infrastructure agents
       console.error('\n▶ Creating infrastructure-specific agents...');
       const infraAgents = await this.createInfrastructureAgents(projectPath, analysis.infrastructure);
@@ -1053,7 +1074,8 @@ ${knowledge.documentation.map(d => `  • ${d.tool}: ${d.description}`).join('\n
         projectPath,
         analysis,
         infraAgents,
-        knowledge
+        knowledge,
+        docsResult
       });
       
       console.error(`\n✅ ${displayName} infrastructure-aware DevAssist ready!`);

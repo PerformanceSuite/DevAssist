@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "devassist": {
-      "command": "node",
-      "args": ["/Users/danielconnolly/Projects/DevAssist_MCP/index.js"],
-      "env": {}
-    }
-  }
-}

@@ -1,12 +1,15 @@
 # DevAssist MCP Server
 
-A Model Context Protocol (MCP) server that provides development assistance through semantic search, architectural memory, and code intelligence.
+A high-performance Model Context Protocol (MCP) server that provides intelligent development assistance with advanced tool masking capabilities for 40-60% token reduction.
 
 ## ✨ Features
 
-- **🔍 Semantic Search**: Find decisions, patterns, and code using natural language queries
+- **🎭 Tool Masking**: Simplified interfaces with automatic complexity hiding
+- **🔍 Semantic Search**: Find decisions, patterns, and code using natural language
 - **🧠 Architectural Memory**: Track design decisions and their rationale over time
 - **📊 Code Intelligence**: Identify duplicate patterns and analyze codebase
+- **📈 Performance Monitoring**: Built-in metrics tracking and optimization
+- **🔄 Session Management**: Intelligent project context and state management
 - **🌐 Web GUI**: Interactive interface for browsing project knowledge
 - **💾 Hybrid Storage**: SQLite for structured data + LanceDB for vector embeddings
 
@@ -16,8 +19,8 @@ A Model Context Protocol (MCP) server that provides development assistance throu
 
 ```bash
 # Clone the repository
-git clone https://github.com/PerformanceSuite/devassist-mcp.git
-cd devassist-mcp
+git clone https://github.com/PerformanceSuite/DevAssist.git
+cd DevAssist
 
 # Install dependencies
 npm install
@@ -35,7 +38,7 @@ npm run db:init
   "mcpServers": {
     "devassist": {
       "command": "node",
-      "args": ["/path/to/devassist-mcp/index.js"]
+      "args": ["/Users/danielconnolly/Projects/Custom_MCP/DevAssist/index.js"]
     }
   }
 }

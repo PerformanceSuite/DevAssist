@@ -7,6 +7,7 @@
 import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
+import { TerminalLogger } from './terminal-logger.js';
 
 export class WarmUpManager {
   constructor(projectPath, databases, sessionManager) {
@@ -34,6 +35,7 @@ export class WarmUpManager {
     const warmUpSteps = [
       this.loadPreviousContext(),
       this.analyzeRecentChanges(),
+      this.analyzeTerminalLogs(sessionId),  // NEW: Read terminal logs
       this.prepareSearchIndices(),
       this.checkPendingTasks(),
       this.primeTools(),
@@ -154,7 +156,76 @@ export class WarmUpManager {
   }
 
   /**
-   * Step 3: Prepare and warm up search indices
+   * Step 3: Analyze terminal logs from previous session
+   */
+  async analyzeTerminalLogs(sessionId) {
+    try {
+      const logger = new TerminalLogger(this.projectPath, sessionId);
+      const logs = await logger.getRecentLogs(100);
+      const history = await logger.getCommandHistory();
+      
+      // Extract insights from terminal activity
+      const insights = {
+        recentCommands: logs.recentCommands.length,
+        errorCount: logs.recentErrors.length,
+        gitActivity: logs.gitActivity.length,
+        lastCommands: history.slice(-10),
+        commonPatterns: this.extractPatterns(logs.recentCommands)
+      };
+      
+      // Identify what user was working on
+      const workContext = {
+        wasTestingCode: logs.recentCommands.some(cmd => 
+          cmd.includes('test') || cmd.includes('jest') || cmd.includes('pytest')
+        ),
+        wasDebugging: logs.recentErrors.length > 0,
+        wasUsingGit: logs.gitActivity.length > 0,
+        wasInstalling: logs.recentCommands.some(cmd => 
+          cmd.includes('npm install') || cmd.includes('pip install')
+        ),
+        wasBuilding: logs.recentCommands.some(cmd => 
+          cmd.includes('build') || cmd.includes('compile') || cmd.includes('make')
+        )
+      };
+      
+      return {
+        success: true,
+        terminalInsights: insights,
+        workContext,
+        suggestion: this.generateContextSuggestion(workContext)
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Terminal log analysis failed: ${error.message}`
+      };
+    }
+  }
+  
+  extractPatterns(commands) {
+    const patterns = {};
+    commands.forEach(cmd => {
+      const base = cmd.split(' ')[0];
+      patterns[base] = (patterns[base] || 0) + 1;
+    });
+    return Object.entries(patterns)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cmd, count]) => ({ command: cmd, frequency: count }));
+  }
+  
+  generateContextSuggestion(context) {
+    const suggestions = [];
+    if (context.wasDebugging) suggestions.push('Continue debugging recent errors');
+    if (context.wasTestingCode) suggestions.push('Review test results');
+    if (context.wasUsingGit) suggestions.push('Check git status for uncommitted changes');
+    if (context.wasInstalling) suggestions.push('Verify new dependencies installed correctly');
+    if (context.wasBuilding) suggestions.push('Check build output for issues');
+    return suggestions;
+  }
+
+  /**
+   * Step 4: Prepare and warm up search indices
    */
   async prepareSearchIndices() {
     try {
