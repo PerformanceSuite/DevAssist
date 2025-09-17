@@ -1,4 +1,4 @@
-# DevAssist MCP Server v2.1.0 🚀
+# DevAssist MCP Server v2.2.0 🚀
 
 An intelligent development assistant that provides runtime session management, architectural memory, and AI-powered code intelligence through the Model Context Protocol (MCP).
 
@@ -46,6 +46,28 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 
 ## 📦 Features
+
+### 🎨 UI Module (NEW!)
+Enhanced visual development environment with:
+
+- **Live Preview**: Split-screen code + browser preview with Playwright
+- **Visual Regression Testing**: Pixel-perfect comparison and diff generation
+- **Design System Validation**: Enforce design tokens and spacing scales
+- **Performance Tracking**: Real-time metrics and budget enforcement
+- **Keyboard Shortcuts**: Cmd+R refresh, Cmd+S save, Cmd+V validate
+- **Visual Checkpoints**: Git integration with automatic screenshots
+
+#### UI Mode Commands
+```bash
+# Enter UI Focus Mode
+/ui-mode --component Button --viewport mobile
+
+# Create visual checkpoint
+/ui-checkpoint "Updated button styles"
+
+# Exit UI mode with summary
+/ui-mode --exit
+```
 
 ### Session Management
 Complete lifecycle management for development sessions:
@@ -362,5 +384,5 @@ Built with ❤️ by the Performance Suite team.
 
 ---
 
-*DevAssist v2.1.0 - Intelligent Development Assistant*
+*DevAssist v2.2.0 - Intelligent Development Assistant with UI Module*
 *Part of the Custom MCP Servers Suite*
