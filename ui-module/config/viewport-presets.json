@@ -1,0 +1,62 @@
+{
+  "presets": {
+    "desktop": {
+      "name": "Desktop",
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    "laptop": {
+      "name": "Laptop",
+      "width": 1280,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "tablet": {
+      "name": "Tablet",
+      "width": 768,
+      "height": 1024,
+      "deviceScaleFactor": 2
+    },
+    "mobile": {
+      "name": "Mobile",
+      "width": 375,
+      "height": 812,
+      "deviceScaleFactor": 3
+    },
+    "iPhone15": {
+      "name": "iPhone 15",
+      "width": 393,
+      "height": 852,
+      "deviceScaleFactor": 3,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "iPadPro": {
+      "name": "iPad Pro",
+      "width": 1024,
+      "height": 1366,
+      "deviceScaleFactor": 2,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "pixel7": {
+      "name": "Pixel 7",
+      "width": 412,
+      "height": 915,
+      "deviceScaleFactor": 2.625,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "galaxyS23": {
+      "name": "Galaxy S23",
+      "width": 360,
+      "height": 780,
+      "deviceScaleFactor": 3,
+      "isMobile": true,
+      "hasTouch": true
+    }
+  },
+  "customViewports": [],
+  "defaultPreset": "desktop"
+}

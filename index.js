@@ -54,6 +54,18 @@ import { AgentTemplateEngine } from './src/agents/agent-template-engine.js';
 import { WorkflowOrchestrator } from './src/claude/workflow-orchestrator.js';
 import { ContinuousLearner } from './src/learning/pattern-scanner.js';
 
+// UI Module import (optional enhancement)
+let uiModuleAvailable = false;
+let UIModeManager = null;
+try {
+  const uiModule = await import('./ui-module/index.js');
+  UIModeManager = uiModule.UIModeManager;
+  uiModuleAvailable = true;
+  console.error('[DevAssist] UI Module loaded - Enhanced UI development mode available');
+} catch (error) {
+  console.error('[DevAssist] UI Module not available - run npm install in ui-module/ to enable');
+}
+
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -348,6 +360,85 @@ const tools = [
     },
   },
 ];
+
+// Add UI Mode tools if module is available
+if (uiModuleAvailable) {
+  tools.push(
+    {
+      name: 'toggle_ui_mode',
+      description: 'Switch between standard and UI development mode for rapid visual iteration',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          mode: {
+            type: 'string',
+            enum: ['ui', 'standard'],
+            description: 'The mode to switch to',
+          },
+        },
+        required: ['mode'],
+      },
+    },
+    {
+      name: 'ui_navigate',
+      description: 'Navigate browser to a specific component or URL in UI mode',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'The URL to navigate to',
+          },
+        },
+        required: ['url'],
+      },
+    },
+    {
+      name: 'ui_set_viewport',
+      description: 'Change browser viewport to test responsive design',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          preset: {
+            type: 'string',
+            enum: ['desktop', 'tablet', 'mobile', 'iPhone15', 'iPadPro'],
+            description: 'Viewport preset name',
+          },
+          width: {
+            type: 'number',
+            description: 'Custom viewport width',
+          },
+          height: {
+            type: 'number',
+            description: 'Custom viewport height',
+          },
+        },
+      },
+    },
+    {
+      name: 'ui_validate_design',
+      description: 'Run design validation checks on current page',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
+      name: 'ui_capture_iteration',
+      description: 'Capture current UI state as a design iteration',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fullPage: {
+            type: 'boolean',
+            description: 'Capture full page or viewport only',
+            default: true,
+          },
+        },
+      },
+    }
+  );
+}
 
 // Initialize server
 async function initialize() {
@@ -807,6 +898,185 @@ async function initialize() {
             content: [{
               type: 'text',
               text: output.join('\n'),
+            }],
+          };
+        }
+
+        // UI Mode handlers (if available)
+        case 'toggle_ui_mode': {
+          if (!uiModuleAvailable) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Module not available. Run: cd ui-module && npm install',
+              }],
+            };
+          }
+
+          const project = await projectManager.getProjectContext('ui-mode', args);
+          if (!project) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ No project detected. Please run from a project directory',
+              }],
+            };
+          }
+
+          // Initialize UI mode manager for project
+          if (!project.uiManager) {
+            project.uiManager = new UIModeManager({
+              projectRoot: project.path,
+              autoStart: false,
+            });
+          }
+
+          if (args.mode === 'ui') {
+            await project.uiManager.enterUIMode();
+            return {
+              content: [{
+                type: 'text',
+                text: '🎨 UI Mode activated\n• Browser session started\n• File watcher active\n• Design validation enabled\n• Visual iterations tracking',
+              }],
+            };
+          } else {
+            await project.uiManager.exitUIMode();
+            return {
+              content: [{
+                type: 'text',
+                text: '✅ Returned to standard mode',
+              }],
+            };
+          }
+        }
+
+        case 'ui_navigate': {
+          if (!uiModuleAvailable) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Module not available',
+              }],
+            };
+          }
+
+          const project = await projectManager.getProjectContext('ui-navigate', args);
+          if (!project?.uiManager) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Mode not active. Use toggle_ui_mode first',
+              }],
+            };
+          }
+
+          await project.uiManager.navigateTo(args.url);
+          return {
+            content: [{
+              type: 'text',
+              text: `🌐 Navigated to: ${args.url}`,
+            }],
+          };
+        }
+
+        case 'ui_set_viewport': {
+          if (!uiModuleAvailable) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Module not available',
+              }],
+            };
+          }
+
+          const project = await projectManager.getProjectContext('ui-viewport', args);
+          if (!project?.uiManager) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Mode not active. Use toggle_ui_mode first',
+              }],
+            };
+          }
+
+          if (args.preset) {
+            await project.uiManager.setViewport(args.preset);
+            return {
+              content: [{
+                type: 'text',
+                text: `📱 Viewport changed to: ${args.preset}`,
+              }],
+            };
+          } else if (args.width && args.height) {
+            await project.uiManager.setViewport({ width: args.width, height: args.height });
+            return {
+              content: [{
+                type: 'text',
+                text: `📐 Viewport set to: ${args.width}x${args.height}`,
+              }],
+            };
+          }
+        }
+
+        case 'ui_validate_design': {
+          if (!uiModuleAvailable) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Module not available',
+              }],
+            };
+          }
+
+          const project = await projectManager.getProjectContext('ui-validate', args);
+          if (!project?.uiManager) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Mode not active. Use toggle_ui_mode first',
+              }],
+            };
+          }
+
+          const report = await project.uiManager.runValidation();
+          const issues = report.results.filter(r => !r.passed);
+
+          return {
+            content: [{
+              type: 'text',
+              text: `✅ Design Validation Complete\n\nScore: ${report.score.percentage}%\n${report.score.failed} errors, ${report.score.warnings} warnings\n\n${issues.slice(0, 5).map(i => `• ${i.message}`).join('\n')}`,
+            }],
+          };
+        }
+
+        case 'ui_capture_iteration': {
+          if (!uiModuleAvailable) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Module not available',
+              }],
+            };
+          }
+
+          const project = await projectManager.getProjectContext('ui-capture', args);
+          if (!project?.uiManager) {
+            return {
+              content: [{
+                type: 'text',
+                text: '❌ UI Mode not active. Use toggle_ui_mode first',
+              }],
+            };
+          }
+
+          const screenshot = await project.uiManager.captureScreenshot(args.fullPage);
+          const iterations = project.uiManager.getIterations(1);
+          const latest = iterations[0];
+
+          return {
+            content: [{
+              type: 'text',
+              text: `📸 Design iteration captured\nID: ${latest?.id}\nTimestamp: ${new Date(latest?.timestamp).toLocaleString()}`,
             }],
           };
         }

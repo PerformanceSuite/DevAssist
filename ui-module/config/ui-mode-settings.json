@@ -1,0 +1,50 @@
+{
+  "defaultMode": "standard",
+  "uiMode": {
+    "enabled": false,
+    "layout": {
+      "leftPanel": 40,
+      "centerPanel": 40,
+      "rightPanel": 20
+    },
+    "autoRefresh": true,
+    "refreshDelay": 500,
+    "screenshotHistory": {
+      "enabled": true,
+      "maxItems": 50,
+      "compressionQuality": 0.8
+    },
+    "fileWatcher": {
+      "patterns": ["**/*.{tsx,jsx,css,scss,html}", "**/*.module.{css,scss}"],
+      "ignore": ["**/node_modules/**", "**/dist/**", "**/build/**"],
+      "debounceMs": 500
+    },
+    "validation": {
+      "autoRun": true,
+      "wcagLevel": "AA",
+      "performanceMetrics": true,
+      "consoleErrors": true
+    },
+    "contextFiles": [
+      "design-principles.md",
+      "style-guide.md",
+      "design-tokens.json"
+    ]
+  },
+  "browserSession": {
+    "persistent": true,
+    "headless": false,
+    "defaultViewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "deviceEmulation": null
+  },
+  "shortcuts": {
+    "toggleMode": "cmd+shift+u",
+    "refresh": "cmd+r",
+    "screenshot": "cmd+s",
+    "toggleDevice": "cmd+d",
+    "runValidation": "cmd+v"
+  }
+}
