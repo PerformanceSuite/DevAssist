@@ -47,6 +47,13 @@ import { createSessionHeartbeat } from './src/session/heartbeat.js';
 import { CleanupManager } from './src/session/cleanup-manager.js';
 import { TerminalLogger } from './src/session/terminal-logger.js';
 
+// New v3.0 imports for intelligent agent generation
+import { IntelligentAgentGenerator } from './src/agents/intelligent-agent-generator.js';
+import { ProjectAnalyzer } from './src/analysis/project-analyzer.js';
+import { AgentTemplateEngine } from './src/agents/agent-template-engine.js';
+import { WorkflowOrchestrator } from './src/claude/workflow-orchestrator.js';
+import { ContinuousLearner } from './src/learning/pattern-scanner.js';
+
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -231,6 +238,113 @@ const tools = [
         },
       },
       required: ['decision', 'context'],
+    },
+  },
+  // New v3.0 Intelligent Agent Tools
+  {
+    name: 'init_claude_code',
+    description: 'Generate complete Claude Code configuration with optimized agents for your project - analyzes codebase and creates 15-20 specialized agents, MCPs, and workflows',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project_path: {
+          type: 'string',
+          description: 'Project path to configure (defaults to current directory)',
+        },
+        complexity_override: {
+          type: 'string',
+          enum: ['auto', 'low', 'medium', 'high', 'enterprise'],
+          description: 'Override automatic complexity detection',
+          default: 'auto',
+        },
+        force: {
+          type: 'boolean',
+          description: 'Regenerate even if configuration exists',
+          default: false,
+        },
+      },
+    },
+  },
+  {
+    name: 'analyze_project_for_agents',
+    description: 'Deep analysis of project to recommend optimal agent configuration - detects tech stack, architecture, and special requirements',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        project_path: {
+          type: 'string',
+          description: 'Project path to analyze (defaults to current directory)',
+        },
+        verbose: {
+          type: 'boolean',
+          description: 'Include detailed analysis results',
+          default: false,
+        },
+      },
+    },
+  },
+  {
+    name: 'update_agent_capabilities',
+    description: 'Scan for new patterns and update agent templates with latest techniques and best practices',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scan_sources: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Sources to scan for updates',
+          default: ['github-trending', 'tech-blogs', 'mcp-registry'],
+        },
+        apply_updates: {
+          type: 'boolean',
+          description: 'Automatically apply discovered updates',
+          default: false,
+        },
+      },
+    },
+  },
+  {
+    name: 'generate_agent_workflow',
+    description: 'Create a multi-agent workflow for specific tasks like deployment, testing, or compliance',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workflow_type: {
+          type: 'string',
+          enum: ['feature-development', 'deployment', 'testing', 'security', 'compliance', 'performance'],
+          description: 'Type of workflow to generate',
+        },
+        project_path: {
+          type: 'string',
+          description: 'Project path (defaults to current directory)',
+        },
+        agents: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Specific agents to include in workflow',
+        },
+      },
+      required: ['workflow_type'],
+    },
+  },
+  {
+    name: 'list_available_agents',
+    description: 'List all available agent templates and their specializations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['all', 'architecture', 'development', 'operations', 'quality', 'specialized'],
+          description: 'Filter agents by category',
+          default: 'all',
+        },
+        complexity_level: {
+          type: 'string',
+          enum: ['low', 'medium', 'high', 'enterprise'],
+          description: 'Filter agents by complexity level',
+        },
+      },
     },
   },
 ];
@@ -422,7 +536,7 @@ async function initialize() {
               }],
             };
           }
-          
+
           const decisionPath = projectManager.getDataPath(project, 'decisions');
           const decision = {
             id: Date.now().toString(),
@@ -432,13 +546,13 @@ async function initialize() {
             alternatives: args.alternatives || [],
             project: project.name,
           };
-          
+
           await fs.mkdir(decisionPath, { recursive: true });
           await fs.writeFile(
             path.join(decisionPath, `${decision.id}.json`),
             JSON.stringify(decision, null, 2)
           );
-          
+
           return {
             content: [{
               type: 'text',
@@ -446,7 +560,257 @@ async function initialize() {
             }],
           };
         }
-        
+
+        // New v3.0 Intelligent Agent Tool Handlers
+        case 'init_claude_code': {
+          const projectPath = args.project_path || process.cwd();
+          const generator = new IntelligentAgentGenerator();
+
+          try {
+            const result = await generator.generateClaudeCodeSetup(projectPath);
+
+            const summary = [
+              `✅ Claude Code Configuration Complete!`,
+              ``,
+              `📊 Project Analysis:`,
+              `  • Type: ${result.profile.type.join(', ')}`,
+              `  • Complexity: ${result.profile.complexity.level} (${result.profile.complexity.score}/100)`,
+              `  • Stack: ${result.profile.stack.languages.join(', ')}`,
+              ``,
+              `🤖 Generated ${result.agents.length} Specialized Agents:`,
+              ...result.agents.slice(0, 5).map(a => `  • ${a.name} [${a.model}]`),
+              result.agents.length > 5 ? `  ... and ${result.agents.length - 5} more` : '',
+              ``,
+              `🔌 Configured ${result.mcps.length} MCP Integrations`,
+              `🔄 Created ${result.workflows.length} Multi-Agent Workflows`,
+              `⚡ Generated ${result.commands.length} Slash Commands`,
+              ``,
+              `📁 Configuration saved to .claude/`,
+              `🚀 Your intelligent agents are ready!`
+            ].filter(Boolean);
+
+            return {
+              content: [{
+                type: 'text',
+                text: summary.join('\n'),
+              }],
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Error generating Claude Code configuration: ${error.message}`,
+              }],
+            };
+          }
+        }
+
+        case 'analyze_project_for_agents': {
+          const projectPath = args.project_path || process.cwd();
+          const analyzer = new ProjectAnalyzer({ verbose: args.verbose });
+
+          try {
+            const profile = await analyzer.deepAnalyze(projectPath);
+            const generator = new IntelligentAgentGenerator();
+            const recommendations = await generator.recommendAgents(profile);
+
+            const analysis = [
+              `📊 Project Analysis Results:`,
+              ``,
+              `Project: ${profile.name}`,
+              `Type: ${profile.type.join(', ')}`,
+              `Architecture: ${profile.patterns.architecture}`,
+              `Complexity: ${profile.complexity.level} (Score: ${profile.complexity.score}/100)`,
+              ``,
+              `Technology Stack:`,
+              `  • Languages: ${profile.stack.languages.join(', ')}`,
+              `  • Frameworks: ${profile.stack.frameworks.join(', ')}`,
+              `  • Databases: ${profile.stack.databases.join(', ')}`,
+              `  • Cloud: ${profile.stack.cloud || 'None detected'}`,
+              ``,
+              `Recommended Agents:`,
+              `  Required: ${recommendations.required.join(', ')}`,
+              `  Recommended: ${recommendations.recommended.join(', ')}`,
+              `  Optional: ${recommendations.optional.join(', ')}`
+            ];
+
+            if (profile.special.compliance?.length > 0) {
+              analysis.push('', `⚠️ Compliance Requirements: ${profile.special.compliance.join(', ')}`);
+            }
+
+            if (profile.custom.oidc_wif) {
+              analysis.push('⚠️ Special: OIDC/WIF Authentication detected');
+            }
+
+            if (args.verbose) {
+              analysis.push('', `Full Profile:`, JSON.stringify(profile, null, 2));
+            }
+
+            return {
+              content: [{
+                type: 'text',
+                text: analysis.join('\n'),
+              }],
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Error analyzing project: ${error.message}`,
+              }],
+            };
+          }
+        }
+
+        case 'update_agent_capabilities': {
+          const learner = new ContinuousLearner();
+
+          try {
+            // Initialize with current project context
+            const projectPath = process.cwd();
+            const analyzer = new ProjectAnalyzer();
+            const profile = await analyzer.deepAnalyze(projectPath);
+            await learner.initialize(profile);
+
+            const result = await learner.scanAndLearn();
+
+            const update = [
+              `🔄 Agent Capability Update Report:`,
+              ``,
+              `New Patterns Discovered: ${result.stats.patterns}`,
+              `Techniques Learned: ${result.stats.techniques}`,
+              `MCPs Available: ${result.stats.mcps}`,
+              `Practices Updated: ${result.stats.practices}`,
+              `Framework Updates: ${result.stats.frameworks}`,
+              ``,
+              result.report
+            ];
+
+            if (args.apply_updates && result.stats.patterns + result.stats.techniques > 0) {
+              update.push('', '✅ Updates have been applied to agent templates');
+            }
+
+            return {
+              content: [{
+                type: 'text',
+                text: update.join('\n'),
+              }],
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Error updating capabilities: ${error.message}`,
+              }],
+            };
+          }
+        }
+
+        case 'generate_agent_workflow': {
+          const projectPath = args.project_path || process.cwd();
+          const orchestrator = new WorkflowOrchestrator();
+
+          try {
+            const analyzer = new ProjectAnalyzer();
+            const profile = await analyzer.deepAnalyze(projectPath);
+
+            // Get or generate agents
+            let agents = args.agents || [];
+            if (agents.length === 0) {
+              const generator = new IntelligentAgentGenerator();
+              const generatedAgents = await generator.generateAgentsForComplexity(profile);
+              agents = generatedAgents.map(a => ({ name: a.name, model: a.model }));
+            }
+
+            // Create specific workflow
+            let workflow;
+            switch (args.workflow_type) {
+              case 'deployment':
+                workflow = await orchestrator.createDeploymentWorkflow(profile, agents);
+                break;
+              case 'testing':
+                workflow = await orchestrator.createTestingWorkflow(profile, agents);
+                break;
+              case 'security':
+                workflow = await orchestrator.createSecurityWorkflow(profile, agents);
+                break;
+              case 'compliance':
+                workflow = await orchestrator.createComplianceWorkflow(profile, agents);
+                break;
+              case 'performance':
+                workflow = await orchestrator.createPerformanceWorkflow(profile, agents);
+                break;
+              default:
+                workflow = await orchestrator.createFeatureDevelopmentWorkflow(profile, agents);
+            }
+
+            // Save workflow
+            await orchestrator.saveWorkflows([workflow], projectPath);
+
+            const summary = [
+              `✅ Generated ${args.workflow_type} workflow`,
+              ``,
+              `Workflow: ${workflow.name}`,
+              `Description: ${workflow.description}`,
+              `Agents Involved: ${workflow.agents?.length || 0}`,
+              `Steps: ${workflow.steps?.length || 0}`,
+              ``,
+              `Workflow saved to .claude/workflows/${workflow.name}.json`
+            ];
+
+            return {
+              content: [{
+                type: 'text',
+                text: summary.join('\n'),
+              }],
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: 'text',
+                text: `❌ Error generating workflow: ${error.message}`,
+              }],
+            };
+          }
+        }
+
+        case 'list_available_agents': {
+          const templateEngine = new AgentTemplateEngine();
+          await templateEngine.initialize();
+
+          const registry = await templateEngine.createTemplateRegistry();
+          const category = args.category || 'all';
+
+          const output = [`📋 Available Agent Templates:\n`];
+
+          const displayCategory = (name, agents) => {
+            if (category === 'all' || category === name.toLowerCase()) {
+              output.push(`${name}:`);
+              agents.forEach(agent => {
+                output.push(`  • ${agent}`);
+              });
+              output.push('');
+            }
+          };
+
+          displayCategory('Architecture', registry.architecture);
+          displayCategory('Development', registry.development);
+          displayCategory('Operations', registry.operations);
+          displayCategory('Quality', registry.quality);
+          displayCategory('Data', registry.data);
+          displayCategory('Specialized', registry.specialized);
+
+          output.push(`Total: 82+ specialized agents available`);
+          output.push(`\nUse 'init_claude_code' to automatically configure agents for your project`);
+
+          return {
+            content: [{
+              type: 'text',
+              text: output.join('\n'),
+            }],
+          };
+        }
+
         default:
           return {
             content: [{

@@ -1,16 +1,20 @@
 {
   "name": "devassist-mcp-server",
-  "version": "2.1.0",
-  "description": "Development assistant MCP server with architectural memory, codebase intelligence, and documentation resources",
+  "version": "3.0.0",
+  "description": "Intelligent Claude Code configuration generator with 82+ specialized agents, automatic MCP discovery, and continuous learning",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "init-claude-code": "./scripts/init-claude-code.js"
+  },
   "scripts": {
     "start": "node index.js",
     "db:init": "node src/database/init.js",
     "db:migrate": "node src/database/migrate.js",
     "db:test": "node src/database/migrate.js test",
     "test": "node --test src/tests/",
-    "benchmark": "node src/benchmarks/performance.js"
+    "benchmark": "node src/benchmarks/performance.js",
+    "init-claude": "node scripts/init-claude-code.js"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.21.3",
