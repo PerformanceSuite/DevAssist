@@ -1,29 +1,38 @@
 {
   "name": "@devassist/ui-module",
   "version": "1.0.0",
-  "description": "Enhanced UI development module for DevAssist MCP server",
+  "description": "Enhanced UI Development Module for DevAssist",
   "type": "module",
   "main": "index.js",
-  "exports": {
-    ".": "./index.js",
-    "./manager": "./UIModeManager.ts",
-    "./integration": "./DevAssistIntegration.js"
+  "scripts": {
+    "test": "node --test",
+    "benchmark": "node benchmarks/run.js"
   },
   "dependencies": {
-    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "canvas": "^2.11.2",
+    "pixelmatch": "^5.3.0",
+    "lodash": "^4.17.21",
     "chokidar": "^3.5.3",
-    "sharp": "^0.33.0",
-    "minimatch": "^9.0.3",
-    "axe-core": "^4.7.2"
+    "axe-core": "^4.7.0",
+    "css": "^3.0.0",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^20.0.0"
   },
-  "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "test": "node --test test/**/*.test.js",
-    "test:watch": "node --test --watch test/**/*.test.js"
-  }
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "ui",
+    "development",
+    "playwright",
+    "visual-testing",
+    "design-system",
+    "devassist",
+    "mcp"
+  ],
+  "author": "DevAssist Team",
+  "license": "MIT"
 }

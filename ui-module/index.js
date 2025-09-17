@@ -1,71 +1,159 @@
 /**
- * DevAssist UI Module
- * Enhanced UI development mode for rapid visual iteration
+ * UI Module Main Entry Point
+ * Exports the UIModeManager for DevAssist integration
  */
 
-export { UIModeManager } from './UIModeManager.js';
-export { PlaywrightManager } from './services/PlaywrightManager.js';
-export { FileWatcher } from './services/FileWatcher.js';
-export { DesignValidator } from './services/DesignValidator.js';
-export { IterationManager } from './services/IterationManager.js';
-export { DevAssistUIIntegration, createUIIntegration } from './DevAssistIntegration.js';
+import { UIModuleCoordinator } from './UIModuleCoordinator.js';
+import { EventEmitter } from 'events';
+import path from 'path';
+import fs from 'fs/promises';
 
-/**
- * Quick start function to initialize UI mode
- */
-export async function initializeUIMode(config = {}) {
-  const { UIModeManager } = await import('./UIModeManager.js');
-
-  const manager = new UIModeManager({
-    projectRoot: process.cwd(),
-    autoStart: true,
-    ...config
-  });
-
-  // Set up default keyboard shortcuts if in terminal environment
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-    process.stdin.on('data', async (key) => {
-      const char = key.toString();
-
-      // Ctrl+U to toggle UI mode
-      if (char === '\u0015') {
-        const state = manager.getState();
-        if (state.mode === 'ui') {
-          await manager.exitUIMode();
-          console.log('Exited UI Mode');
-        } else {
-          await manager.enterUIMode();
-          console.log('Entered UI Mode');
-        }
-      }
-
-      // Ctrl+S to take screenshot
-      if (char === '\u0013' && manager.getState().mode === 'ui') {
-        await manager.captureScreenshot();
-        console.log('Screenshot captured');
-      }
-
-      // Ctrl+V to run validation
-      if (char === '\u0016' && manager.getState().mode === 'ui') {
-        const report = await manager.runValidation();
-        console.log(`Validation score: ${report.score.percentage}%`);
-      }
-
-      // Ctrl+C to exit
-      if (char === '\u0003') {
-        await manager.cleanup();
-        process.exit(0);
-      }
-    });
+export class UIModeManager extends EventEmitter {
+  constructor() {
+    super();
+    this.coordinator = null;
+    this.isActive = false;
+    this.currentMode = 'standard';
+    this.config = null;
   }
 
-  return manager;
+  /**
+   * Initialize UI Mode Manager
+   */
+  async initialize(projectPath, devAssistPath) {
+    if (this.coordinator) return true;
+    
+    try {
+      this.coordinator = new UIModuleCoordinator(projectPath, devAssistPath);
+      await this.coordinator.initialize();
+      
+      // Load configuration
+      const configPath = path.join(devAssistPath, 'config', 'ui-module-config.json');
+      const configData = await fs.readFile(configPath, 'utf-8');
+      this.config = JSON.parse(configData);
+      
+      this.isActive = true;
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize UI Mode Manager:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Toggle between UI and standard mode
+   */
+  async toggleMode(mode) {
+    if (!this.coordinator) {
+      throw new Error('UI Module not initialized');
+    }
+    
+    if (mode === 'ui' && this.currentMode !== 'ui') {
+      await this.enterUIMode();
+    } else if (mode === 'standard' && this.currentMode === 'ui') {
+      await this.exitUIMode();
+    }
+    
+    return {
+      currentMode: this.currentMode,
+      active: this.isActive
+    };
+  }
+
+  /**
+   * Enter UI development mode
+   */
+  async enterUIMode(options = {}) {
+    console.log('🎨 Entering UI Development Mode...');
+    
+    const result = await this.coordinator.enterUIMode(options);
+    this.currentMode = 'ui';
+    
+    this.emit('mode:changed', { mode: 'ui', workspace: result });
+    
+    return {
+      mode: 'ui',
+      workspace: result,
+      features: this.config.uiModule.features,
+      shortcuts: this.config.uiModule.shortcuts
+    };
+  }
+
+  /**
+   * Exit UI mode and return to standard mode
+   */
+  async exitUIMode() {
+    console.log('👋 Exiting UI Mode...');
+    
+    if (this.coordinator) {
+      await this.coordinator.exitUIMode();
+    }
+    
+    this.currentMode = 'standard';
+    this.emit('mode:changed', { mode: 'standard' });
+    
+    return {
+      mode: 'standard',
+      sessionSummary: await this.coordinator.getSessionSummary()
+    };
+  }
+
+  /**
+   * Navigate to URL or component
+   */
+  async navigate(url) {
+    if (!this.coordinator || this.currentMode !== 'ui') {
+      throw new Error('UI Mode not active');
+    }
+    
+    return await this.coordinator.navigate(url);
+  }
+
+  /**
+   * Set viewport size
+   */
+  async setViewport(viewport) {
+    if (!this.coordinator || this.currentMode !== 'ui') {
+      throw new Error('UI Mode not active');
+    }
+    
+    const viewportSizes = {
+      mobile: { width: 375, height: 812 },
+      tablet: { width: 768, height: 1024 },
+      desktop: { width: 1440, height: 900 },
+      wide: { width: 1920, height: 1080 }
+    };
+    
+    const size = typeof viewport === 'string' 
+      ? viewportSizes[viewport] 
+      : viewport;
+    
+    return await this.coordinator.setViewport(size);
+  }
+
+  /**
+   * Validate current design
+   */
+  async validateDesign(options = {}) {
+    if (!this.coordinator || this.currentMode !== 'ui') {
+      throw new Error('UI Mode not active');
+    }
+    
+    return await this.coordinator.validateDesign(options);
+  }
+
+  /**
+   * Capture design iteration
+   */
+  async captureIteration(description) {
+    if (!this.coordinator || this.currentMode !== 'ui') {
+      throw new Error('UI Mode not active');
+    }
+    
+    return await this.coordinator.captureIteration(description);
+  }
 }
 
-// Default export for convenience
-export default {
-  initializeUIMode,
-  UIModeManager,
-  DevAssistUIIntegration
-};
+// Export for DevAssist
+export { UIModeManager };
+export default UIModeManager;

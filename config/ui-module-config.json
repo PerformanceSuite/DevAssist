@@ -1,0 +1,70 @@
+{
+  "uiModule": {
+    "enabled": true,
+    "profiles": {
+      "development": {
+        "autoRefresh": true,
+        "validationLevel": "basic",
+        "debounceDelay": 500,
+        "cacheEnabled": true,
+        "cacheTTL": 60000,
+        "screenshotCompression": true,
+        "performanceBudget": {
+          "renderTime": 100,
+          "bundleSize": 500000,
+          "cssSize": 100000
+        }
+      },
+      "production": {
+        "autoRefresh": false,
+        "validationLevel": "comprehensive",
+        "debounceDelay": 1000,
+        "cacheEnabled": true,
+        "cacheTTL": 300000,
+        "screenshotCompression": true,
+        "performanceBudget": {
+          "renderTime": 50,
+          "bundleSize": 300000,
+          "cssSize": 50000
+        }
+      },
+      "testing": {
+        "autoRefresh": true,
+        "validationLevel": "comprehensive",
+        "debounceDelay": 0,
+        "cacheEnabled": false,
+        "screenshotCompression": false,
+        "visualRegression": true,
+        "pixelThreshold": 0.1
+      }
+    },
+    "activeProfile": "development",
+    "features": {
+      "playwrightIntegration": true,
+      "visualFeedback": true,
+      "persistentBrowser": true,
+      "autoScreenshot": true,
+      "designValidation": true,
+      "visualRegression": true,
+      "performanceTracking": true,
+      "componentAnalytics": true,
+      "teamCollaboration": false
+    },
+    "performance": {
+      "browserPoolSize": 3,
+      "maxCacheSize": 50,
+      "compressionLevel": 6,
+      "lazyLoadThreshold": 10,
+      "virtualScrolling": true
+    },
+    "shortcuts": {
+      "refresh": "Cmd+R",
+      "save": "Cmd+S",
+      "validate": "Cmd+V",
+      "screenshot": "Cmd+P",
+      "history": "Cmd+H",
+      "deviceToggle": "Cmd+D",
+      "checkpoint": "Cmd+K"
+    }
+  }
+}
